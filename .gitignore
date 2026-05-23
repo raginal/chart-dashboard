@@ -1,0 +1,42 @@
+# Claude Code files
+CLAUDE.md
+.claude/
+
+# Test data / test folder
+testing/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Exported charts
+*.png
+
+# Jupyter
+.ipynb_checkpoints/
