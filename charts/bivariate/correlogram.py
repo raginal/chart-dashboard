@@ -33,6 +33,7 @@ class Correlogram(BaseChart):
             "palette":  {"label": "Colour map",  "type": "choice", "default": "RdBu_r",
                          "choices": PALETTE_CHOICES},
             "annot":    {"label": "Show values",  "type": "bool",   "default": True},
+            **BaseChart._title_style_options(),
         }
 
     def render(self, df: pd.DataFrame, selection: VariableSelection, fig: Figure) -> None:
@@ -75,7 +76,7 @@ class Correlogram(BaseChart):
             square=True,
             cbar_kws={"shrink": 0.8},
         )
-        ax.set_title(self._opt("title") or "Correlation Matrix", fontsize=13, fontweight='bold', pad=10)
+        self._apply_title(ax, self._opt("title") or "Correlation Matrix")
         ax.tick_params(axis='x', rotation=45, labelsize=9)
         ax.tick_params(axis='y', rotation=0,  labelsize=9)
         fig.patch.set_facecolor("white")

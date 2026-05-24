@@ -29,6 +29,7 @@ from charts.bivariate.scatter_plot     import ScatterPlot
 from charts.bivariate.hexbin           import Hexbin
 from charts.bivariate.correlogram      import Correlogram
 from charts.bivariate.line_plot        import LinePlot
+from charts.bivariate.range_line_plot  import RangeLinePlot
 from charts.bivariate.treemap          import Treemap
 from charts.bivariate.tile_map         import TileMap
 
@@ -47,8 +48,8 @@ _ALL_CHART_CLASSES: list[type[BaseChart]] = [
     DonutChart, ColumnChart,
     # Bivariate
     FacetedHistogram,
-    GroupedColumn, StackedColumn, ScatterPlot, Hexbin, Correlogram, LinePlot, Treemap,
-    TileMap,
+    GroupedColumn, StackedColumn, ScatterPlot, Hexbin, Correlogram, LinePlot, RangeLinePlot,
+    Treemap, TileMap,
     # Trivariate
     Sankey, MosaicPlot, SmallMultiples, Heatmap, StackedArea,
 ]

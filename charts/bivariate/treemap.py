@@ -32,6 +32,7 @@ class Treemap(BaseChart):
             "palette": {"label": "Colour palette","type": "choice","default": MPL_DEFAULT_PALETTE,
                         "choices": PALETTE_CHOICES},
             "show_pct":{"label": "Show %",       "type": "bool",   "default": True},
+            **BaseChart._title_style_options(),
         }
 
     def render(self, df: pd.DataFrame, selection: VariableSelection, fig: Figure) -> None:
@@ -77,6 +78,6 @@ class Treemap(BaseChart):
         squarify.plot(sizes=sizes, label=labels, color=colors,
                       alpha=0.85, ax=ax, text_kwargs={"fontsize": 8, "wrap": True})
         ax.set_axis_off()
-        ax.set_title(self._opt("title") or f"{y_col} by {x_col}", fontsize=13, fontweight='bold', pad=10)
+        self._apply_title(ax, self._opt("title") or f"{y_col} by {x_col}")
         fig.patch.set_facecolor("white")
         fig.tight_layout()

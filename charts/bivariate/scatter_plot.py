@@ -37,6 +37,7 @@ class ScatterPlot(BaseChart):
             "trend_line":  {"label": "Show trend line",     "type": "choice", "default": "None",
                             "choices": ["None", "Linear", "LOWESS", "Exponential"]},
             "trend_color": {"label": "Trend line colour",   "type": "text",   "default": MPL_TREND},
+            **BaseChart._title_style_options(),
         }
 
     def render(self, df: pd.DataFrame, selection: VariableSelection, fig: Figure) -> None:
@@ -130,8 +131,7 @@ class ScatterPlot(BaseChart):
         y_label = self._opt("y_label") or VariableTransformer.axis_label(y_col, selection.y_transform())
         ax.set_xlabel(x_label)
         ax.set_ylabel(y_label)
-        ax.set_title(self._opt("title") or f"{y_col} vs {x_col}",
-                     fontsize=13, fontweight='bold', pad=10)
+        self._apply_title(ax, self._opt("title") or f"{y_col} vs {x_col}")
         self._apply_figure_style(fig, ax)
         if sampled:
             self._add_sample_note(ax, 50_000)

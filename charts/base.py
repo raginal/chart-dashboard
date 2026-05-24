@@ -181,3 +181,61 @@ class BaseChart(ABC):
             fontsize=8,
             color="#94A3B8",
         )
+
+    # ── Title style helpers ───────────────────────────────────────────────────
+
+    @staticmethod
+    def _title_style_options() -> dict:
+        """
+        Shared edit-option schema entries for title bold and alignment.
+
+        Merge these into every chart's _default_edit_options() with:
+            **BaseChart._title_style_options()
+        """
+        return {
+            "title_bold":  {"label": "Bold title",      "type": "bool",   "default": True},
+            "title_align": {"label": "Title alignment", "type": "choice", "default": "Center",
+                            "choices": ["Center", "Left", "Right"]},
+        }
+
+    def _apply_title(self, ax, title_text: str, *,
+                     fontsize: int = 13, pad: int = 10) -> None:
+        """
+        Set the axes title, honouring the 'title_bold' and 'title_align'
+        edit options.  Replaces direct ax.set_title() calls in render().
+        """
+        bold = self._opt("title_bold")
+        bold = True if bold is None else bool(bold)
+        align_str = self._opt("title_align") or "Center"
+        loc = {"Center": "center", "Left": "left", "Right": "right"}.get(
+            align_str, "center"
+        )
+        ax.set_title(
+            title_text,
+            fontsize=fontsize,
+            fontweight="bold" if bold else "normal",
+            pad=pad,
+            loc=loc,
+        )
+
+    def _apply_suptitle(self, fig, title_text: str, *,
+                        fontsize: int = 12, y: float = 0.98) -> None:
+        """
+        Set the figure suptitle (used by multi-panel charts), honouring the
+        'title_bold' and 'title_align' edit options.
+        """
+        bold = self._opt("title_bold")
+        bold = True if bold is None else bool(bold)
+        align_str = self._opt("title_align") or "Center"
+        x_pos = {"Center": 0.5,  "Left": 0.05, "Right": 0.95}.get(align_str, 0.5)
+        ha    = {"Center": "center", "Left": "left", "Right": "right"}.get(
+            align_str, "center"
+        )
+        fig.suptitle(
+            title_text,
+            fontsize=fontsize,
+            fontweight="bold" if bold else "normal",
+            y=y,
+            x=x_pos,
+            ha=ha,
+        )

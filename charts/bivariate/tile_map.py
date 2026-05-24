@@ -104,6 +104,7 @@ class TileMap(BaseChart):
                            "choices": ["Mean", "Sum", "Count", "Median", "Min", "Max"]},
             "show_label": {"label": "Show state labels", "type": "bool",   "default": True},
             "show_value": {"label": "Show values",       "type": "bool",   "default": False},
+            **BaseChart._title_style_options(),
         }
 
     def render(self, df: pd.DataFrame, selection: VariableSelection, fig: Figure) -> None:
@@ -214,7 +215,7 @@ class TileMap(BaseChart):
 
         # ── Title ─────────────────────────────────────────────────────────────
         title = self._opt("title") or f"{y_label} by State ({agg_label})"
-        ax.set_title(title, fontsize=13, fontweight='bold', pad=12)
+        self._apply_title(ax, title, pad=12)
 
         fig.patch.set_facecolor("white")
         fig.tight_layout()

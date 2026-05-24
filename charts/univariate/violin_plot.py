@@ -26,6 +26,7 @@ class ViolinPlot(BaseChart):
             "x_label":  {"label": "X-axis label",  "type": "text", "default": ""},
             "show_box": {"label": "Show inner box", "type": "bool", "default": True},
             "color":    {"label": "Violin colour",  "type": "text", "default": MPL_ACCENT},
+            **BaseChart._title_style_options(),
         }
 
     def render(self, df: pd.DataFrame, selection: VariableSelection, fig: Figure) -> None:
@@ -80,8 +81,7 @@ class ViolinPlot(BaseChart):
         ax.set_xticks([1])
         ax.set_xticklabels([x_label])
         ax.set_ylabel("Value")
-        ax.set_title(self._opt("title") or f"Violin Plot — {col}",
-                     fontsize=13, fontweight='bold', pad=10)
+        self._apply_title(ax, self._opt("title") or f"Violin Plot — {col}")
 
         if sampled:
             self._add_sample_note(ax, 50_000)
@@ -140,8 +140,7 @@ class ViolinPlot(BaseChart):
         )
         ax.set_xlabel(self._opt("x_label") or x_col)
         ax.set_ylabel(VariableTransformer.axis_label(y_col, selection.y_transform()))
-        ax.set_title(self._opt("title") or f"{y_col} by {x_col}",
-                     fontsize=13, fontweight='bold', pad=10)
+        self._apply_title(ax, self._opt("title") or f"{y_col} by {x_col}")
 
         if sampled:
             self._add_sample_note(ax, 50_000)

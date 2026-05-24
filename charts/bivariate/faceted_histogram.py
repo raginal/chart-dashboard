@@ -44,6 +44,7 @@ class FacetedHistogram(BaseChart):
             "sort_order": {"label": "Facet order",                "type": "choice", "default": "Ascending",
                            "choices": ["Ascending", "Descending", "As-is"]},
             "shared_x":   {"label": "Shared X range",             "type": "bool",   "default": True},
+            **BaseChart._title_style_options(),
         }
 
     def render(self, df: pd.DataFrame, selection: VariableSelection, fig: Figure) -> None:
@@ -180,6 +181,6 @@ class FacetedHistogram(BaseChart):
         title   = self._opt("title") or f"Distribution of {x_label} by {y_col}"
 
         fig.tight_layout(rect=[0.0, 0.04, 1.0, 0.93])
-        fig.suptitle(title, fontsize=12, fontweight='bold', y=0.98)
+        self._apply_suptitle(fig, title)
         fig.supxlabel(x_label, fontsize=10, y=0.01)
         fig.patch.set_facecolor("white")

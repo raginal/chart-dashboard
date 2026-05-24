@@ -26,6 +26,7 @@ class DensityPlot(BaseChart):
             "x_label": {"label": "X-axis label", "type": "text", "default": ""},
             "color":   {"label": "Curve colour", "type": "text", "default": MPL_ACCENT},
             "fill":    {"label": "Fill under curve", "type": "bool", "default": True},
+            **BaseChart._title_style_options(),
         }
 
     def render(self, df: pd.DataFrame, selection: VariableSelection, fig: Figure) -> None:
@@ -63,7 +64,7 @@ class DensityPlot(BaseChart):
         ax.set_xlabel(x_label)
         ax.set_ylabel("Density")
         ax.set_ylim(bottom=0)
-        ax.set_title(self._opt("title") or f"Density Plot — {col}", fontsize=13, fontweight='bold', pad=10)
+        self._apply_title(ax, self._opt("title") or f"Density Plot — {col}")
         self._apply_figure_style(fig, ax)
         if sampled:
             self._add_sample_note(ax, 50_000)

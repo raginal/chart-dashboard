@@ -30,6 +30,7 @@ class MosaicPlot(BaseChart):
                            "choices": PALETTE_CHOICES},
             "show_counts":{"label": "Show counts",   "type": "bool",   "default": True},
             "show_pct":   {"label": "Show %",         "type": "bool",   "default": True},
+            **BaseChart._title_style_options(),
         }
 
     def render(self, df: pd.DataFrame, selection: VariableSelection, fig: Figure) -> None:
@@ -112,7 +113,6 @@ class MosaicPlot(BaseChart):
                     "alpha": 1.0,
                 },
                 labelizer=labelizer,
-                title=title,
                 axes_label=True,
                 label_rotation=[45.0, 0.0],
             )
@@ -127,6 +127,8 @@ class MosaicPlot(BaseChart):
         for text_obj in ax.texts:
             text_obj.set_fontsize(8)
             text_obj.set_color("#1E293B")
+
+        self._apply_title(ax, title)
 
         fig.patch.set_facecolor("white")
         try:

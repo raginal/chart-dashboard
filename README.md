@@ -201,7 +201,8 @@ The **Variable:** picker in the Univariate tab lets you choose which selected va
 | **Scatter Plot** | Numeric / Date | Numeric / Date | Z-Axis colours points when set (categorical → legend, numeric → colorbar); date axes auto-formatted |
 | **Hexbin Plot** | Numeric / Date | Numeric / Date | Scatter for large datasets with many overlapping points; date axes auto-formatted |
 | **Correlogram** | Numeric | Numeric | Pairwise correlations across all numeric columns in the dataset |
-| **Line Plot** | Numeric / Date | Numeric | Trends over a continuous or time axis |
+| **Line Plot** | Numeric / Date | Numeric | Trends over a continuous or time axis; when Z-Axis is also numeric it is drawn as a second dashed line |
+| **Range Line Plot** | **Date** | Numeric | Seasonal context ribbon chart: shaded min–max band for the historical period, long-dashed line for the current period. Configurable range (5 yr / 10 yr / 1 yr / 1 mo) and optional average line. |
 | **Faceted Histogram** | Numeric / Date | Categorical / Location | Distribution of X in a separate panel per Y value |
 | **Faceted Column Chart** | Categorical | Categorical / Location | Bar chart of X counts in a separate panel per Y value |
 | **US Tile Map** | **Location** | Numeric | Choropleth-style grid map; each US state coloured by the aggregated Y value. Aggregation function, state label visibility, and value display are all configurable via Quick Edit. |
@@ -213,6 +214,7 @@ The **Variable:** picker in the Univariate tab lets you choose which selected va
 | **Sankey Diagram** | Categorical / Location | Categorical / Location | Any | 3-column flow (X → Y → Z); gray node bars, coloured bezier flows |
 | **Stacked Area Chart** | Numeric / Date | Numeric | Categorical / Location | Y (aggregated per Z group) stacked cumulatively over X; one colour band per Z value |
 | **Small Multiples** | Numeric / Date | Numeric / Date | Categorical / Location | Scatter or Line panels of Y vs X, one panel per Z value |
+| **Line Plot** | Numeric / Date | Numeric | **Numeric** | Dual-line chart: Y drawn solid, Z drawn dashed; both share the X axis |
 
 > **Scatter Plot Z-Axis colouring:** when Z-Axis is set, scatter points are coloured by that variable. Categorical / Location Z → distinct colours + legend. Numeric Z → viridis gradient + colour bar.
 >
@@ -227,8 +229,12 @@ Click **Quick Edit** to open the chart options dialog. The available options dep
 | Option type | Examples |
 |---|---|
 | **Text** | Chart title, X-axis label, Y-axis label |
-| **Toggle (on/off)** | Show trend line, show error bars, show confidence band, fill under curve |
-| **Palette choice** | Colour scheme (tab10, Blues, viridis, RdBu_r, etc.) |
+| **Toggle (on/off)** | Bold title, show trend line, show confidence band, fill under curve |
+| **Choice** | Title alignment (Center / Left / Right), colour scheme (tab10, Blues, viridis, RdBu_r, …) |
+
+**Every chart** exposes two title style options:
+- **Bold title** — toggle bold on or off (default: on)
+- **Title alignment** — Center (default), Left, or Right
 
 Edit options **persist** when you change variables, so a title you set stays set even if you switch X-Axis columns.
 
@@ -264,7 +270,7 @@ chartBuilder/
 │   ├── base.py                # BaseChart abstract class
 │   ├── registry.py            # CHART_REGISTRY — only file to edit when adding a chart
 │   ├── univariate/            # 9 chart modules
-│   ├── bivariate/             # 9 chart modules (Box + Violin render bivariate from univariate/)
+│   ├── bivariate/             # 11 chart modules (Box + Violin render bivariate from univariate/)
 │   └── trivariate/            # 5 chart modules
 │
 └── ui/
@@ -321,14 +327,14 @@ class MyChart(BaseChart):
             "palette": {"label": "Palette",   "type": "choice",
                         "default": "tab10",   "choices": ["tab10", "Blues", "viridis"]},
             "show_grid":{"label": "Show grid","type": "bool",   "default": True},
+            **BaseChart._title_style_options(),   # adds title_bold + title_align
         }
 
     def render(self, df, selection: VariableSelection, fig) -> None:
         fig.clear()
         ax = fig.add_subplot(111)
         # ... matplotlib drawing code ...
-        ax.set_title(self._opt("title") or f"My Chart — {selection.x_var}",
-                     fontsize=13, fontweight="bold")
+        self._apply_title(ax, self._opt("title") or f"My Chart — {selection.x_var}")
         self._apply_figure_style(fig, ax)
         fig.tight_layout()
 ```
@@ -360,6 +366,9 @@ That's it. No other files need changing.
 |---|---|
 | `self._opt(key)` | Returns the current value of an edit option (user value or default) |
 | `self._apply_figure_style(fig, ax)` | Applies consistent spine colour, grid, and font styling |
+| `self._apply_title(ax, text)` | Sets `ax.set_title()` honouring `title_bold` and `title_align` edit options |
+| `self._apply_suptitle(fig, text)` | Sets `fig.suptitle()` honouring `title_bold` and `title_align` edit options |
+| `BaseChart._title_style_options()` | Static dict of the two shared title-style edit-option entries; merge with `**` into `_default_edit_options()` |
 | `self._large_data_sample(df, limit)` | Returns `(df_sample, was_sampled)` — use for slow charts |
 | `self._add_sample_note(ax, n)` | Adds an annotation noting that a sample was used |
 | `self._to_mpl_numeric(series, vtype)` | Converts a series to plottable floats; DATE → matplotlib date numbers |

@@ -26,6 +26,7 @@ class CumulativeDensity(BaseChart):
             "title":   {"label": "Title",       "type": "text", "default": ""},
             "x_label": {"label": "X-axis label", "type": "text", "default": ""},
             "color":   {"label": "Line colour",  "type": "text", "default": MPL_ACCENT},
+            **BaseChart._title_style_options(),
         }
 
     def render(self, df: pd.DataFrame, selection: VariableSelection, fig: Figure) -> None:
@@ -56,7 +57,6 @@ class CumulativeDensity(BaseChart):
         x_label = self._opt("x_label") or VariableTransformer.axis_label(col, selection.x_transform())
         ax.set_xlabel(x_label)
         ax.set_ylabel("Cumulative proportion")
-        ax.set_title(self._opt("title") or f"Cumulative Density — {col}",
-                     fontsize=13, fontweight='bold', pad=10)
+        self._apply_title(ax, self._opt("title") or f"Cumulative Density — {col}")
         self._apply_figure_style(fig, ax)
         fig.tight_layout()

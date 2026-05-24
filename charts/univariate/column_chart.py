@@ -33,6 +33,7 @@ class ColumnChart(BaseChart):
             "sort_by":  {"label": "Sort bars by",    "type": "choice", "default": "Count",
                          "choices": ["Count", "Value"]},
             "rotate_x": {"label": "Rotate X labels", "type": "bool",   "default": False},
+            **BaseChart._title_style_options(),
         }
 
     def render(self, df: pd.DataFrame, selection: VariableSelection, fig: Figure) -> None:
@@ -86,10 +87,7 @@ class ColumnChart(BaseChart):
         x_label = VariableTransformer.axis_label(col, selection.x_transform())
         ax.set_xlabel(x_label)
         ax.set_ylabel("Count")
-        ax.set_title(
-            self._opt("title") or f"Distribution — {x_label}",
-            fontsize=13, fontweight="bold", pad=10,
-        )
+        self._apply_title(ax, self._opt("title") or f"Distribution — {x_label}")
 
         self._apply_figure_style(fig, ax)
         fig.tight_layout()

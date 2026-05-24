@@ -26,6 +26,7 @@ class BoxPlot(BaseChart):
             "x_label":     {"label": "X-axis label",  "type": "text", "default": ""},
             "show_points": {"label": "Show points",   "type": "bool", "default": False},
             "color":       {"label": "Box colour",    "type": "text", "default": MPL_ACCENT},
+            **BaseChart._title_style_options(),
         }
 
     def render(self, df: pd.DataFrame, selection: VariableSelection, fig: Figure) -> None:
@@ -78,8 +79,7 @@ class BoxPlot(BaseChart):
         ax.set_xlabel(x_label)
         ax.set_ylabel("Value")
         ax.set_xticklabels([x_label])
-        ax.set_title(self._opt("title") or f"Box Plot — {col}",
-                     fontsize=13, fontweight='bold', pad=10)
+        self._apply_title(ax, self._opt("title") or f"Box Plot — {col}")
 
     def _render_grouped(self, df, ax, x_col, y_col, selection):
         """Box per category of x_col, values = y_col — single colour."""
@@ -135,5 +135,4 @@ class BoxPlot(BaseChart):
         )
         ax.set_xlabel(self._opt("x_label") or x_col)
         ax.set_ylabel(VariableTransformer.axis_label(y_col, selection.y_transform()))
-        ax.set_title(self._opt("title") or f"{y_col} by {x_col}",
-                     fontsize=13, fontweight='bold', pad=10)
+        self._apply_title(ax, self._opt("title") or f"{y_col} by {x_col}")

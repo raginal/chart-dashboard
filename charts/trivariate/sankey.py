@@ -42,6 +42,7 @@ class Sankey(BaseChart):
             "title":   {"label": "Title",         "type": "text",   "default": ""},
             "palette": {"label": "Colour palette", "type": "choice", "default": MPL_DEFAULT_PALETTE,
                         "choices": PALETTE_CHOICES},
+            **BaseChart._title_style_options(),
         }
 
     # ── Public render ─────────────────────────────────────────────────────────
@@ -198,7 +199,7 @@ class Sankey(BaseChart):
             if n_cols == 3
             else f"Flow: {x_col} → {y_col}"
         )
-        ax.set_title(title, fontsize=13, fontweight="bold", pad=10, color="#0F172A")
+        self._apply_title(ax, title)
         fig.tight_layout()
 
     # ── Private helpers ───────────────────────────────────────────────────────

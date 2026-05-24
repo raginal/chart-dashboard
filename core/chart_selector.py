@@ -166,6 +166,10 @@ class ChartSelector:
                     ChartSpec("line_plot",    "bivariate", "Line Plot"),
                 ]
 
+            # ── Date × numeric → Range Line Plot ──────────────────────────────
+            if _is_date(x_t) and _is_numeric(y_t):
+                biv.append(ChartSpec("range_line_plot", "bivariate", "Range Line Plot"))
+
             # ── Faceted chart: any non-location X, cat-like Y as facet ────────
             # Use strict _is_categorical for naming: DATE x → "Faceted Histogram"
             #   (faceted_histogram.py bins date X as numeric)
@@ -197,6 +201,10 @@ class ChartSelector:
             if _is_numeric(x_t) and _is_numeric(y_t) and _is_cat_like(z_t):
                 triv.append(ChartSpec("small_multiples", "trivariate", "Small Multiples"))
                 triv.append(ChartSpec("stacked_area",    "trivariate", "Stacked Area Chart"))
+
+            # ── numeric × numeric × numeric → Line Plot (dual-line) ───────────
+            if _is_numeric(x_t) and _is_numeric(y_t) and _is_numeric(z_t):
+                triv.append(ChartSpec("line_plot", "trivariate", "Line Plot"))
 
             if triv:
                 result["trivariate"] = triv

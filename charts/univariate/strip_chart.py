@@ -27,6 +27,7 @@ class StripChart(BaseChart):
             "color":   {"label": "Point colour", "type": "text", "default": MPL_ACCENT},
             "alpha":   {"label": "Opacity (0–1)","type": "text", "default": "0.4"},
             "jitter":  {"label": "Jitter amount","type": "text", "default": "0.35"},
+            **BaseChart._title_style_options(),
         }
 
     def render(self, df: pd.DataFrame, selection: VariableSelection, fig: Figure) -> None:
@@ -65,7 +66,7 @@ class StripChart(BaseChart):
             self._apply_date_fmt(ax, 'x', fig)
         x_label = self._opt("x_label") or VariableTransformer.axis_label(col, selection.x_transform())
         ax.set_xlabel(x_label)
-        ax.set_title(self._opt("title") or f"Strip Chart — {col}", fontsize=13, fontweight='bold', pad=10)
+        self._apply_title(ax, self._opt("title") or f"Strip Chart — {col}")
         self._apply_figure_style(fig, ax)
         if sampled:
             self._add_sample_note(ax, 50_000)

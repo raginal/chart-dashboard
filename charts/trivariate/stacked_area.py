@@ -40,6 +40,7 @@ class StackedArea(BaseChart):
             "palette":  {"label": "Colour palette", "type": "choice", "default": MPL_DEFAULT_PALETTE,
                          "choices": PALETTE_CHOICES},
             "alpha":    {"label": "Fill opacity",   "type": "text",   "default": "0.75"},
+            **BaseChart._title_style_options(),
         }
 
     def render(self, df: pd.DataFrame, selection: VariableSelection, fig: Figure) -> None:
@@ -114,8 +115,7 @@ class StackedArea(BaseChart):
         y_label = self._opt("y_label") or VariableTransformer.axis_label(y_col, selection.y_transform())
         ax.set_xlabel(x_label)
         ax.set_ylabel(f"{agg_func} of {y_label}")
-        ax.set_title(self._opt("title") or f"{agg_func} of {y_col} over {x_col} by {z_col}",
-                     fontsize=13, fontweight='bold', pad=10)
+        self._apply_title(ax, self._opt("title") or f"{agg_func} of {y_col} over {x_col} by {z_col}")
 
         self._apply_figure_style(fig, ax)
         fig.tight_layout()

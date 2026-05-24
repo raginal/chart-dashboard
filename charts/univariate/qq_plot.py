@@ -26,6 +26,7 @@ class QQPlot(BaseChart):
             "title":       {"label": "Title",        "type": "text", "default": ""},
             "point_color": {"label": "Point colour",  "type": "text", "default": MPL_ACCENT},
             "line_color":  {"label": "Reference line","type": "text", "default": MPL_TREND},
+            **BaseChart._title_style_options(),
         }
 
     def render(self, df: pd.DataFrame, selection: VariableSelection, fig: Figure) -> None:
@@ -62,7 +63,7 @@ class QQPlot(BaseChart):
         x_label = VariableTransformer.axis_label(col, selection.x_transform())
         ax.set_xlabel("Theoretical quantiles (Normal)")
         ax.set_ylabel(f"Sample quantiles — {x_label}")
-        ax.set_title(self._opt("title") or f"Q-Q Plot — {col}", fontsize=13, fontweight='bold', pad=10)
+        self._apply_title(ax, self._opt("title") or f"Q-Q Plot — {col}")
         self._apply_figure_style(fig, ax)
         if sampled:
             self._add_sample_note(ax, 50_000)

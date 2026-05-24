@@ -31,6 +31,7 @@ class Histogram(BaseChart):
             "y_label": {"label": "Y-axis label", "type": "text", "default": "Count"},
             "color":   {"label": "Bar colour",   "type": "text", "default": MPL_ACCENT},
             "show_kde":{"label": "Overlay KDE",  "type": "bool", "default": False},
+            **BaseChart._title_style_options(),
         }
 
     def render(self, df: pd.DataFrame, selection: VariableSelection, fig: Figure) -> None:
@@ -71,7 +72,7 @@ class Histogram(BaseChart):
         y_label = self._opt("y_label") or "Count"
         ax.set_xlabel(x_label)
         ax.set_ylabel(y_label)
-        ax.set_title(self._opt("title") or f"Histogram — {col}", fontsize=13, fontweight='bold', pad=10)
+        self._apply_title(ax, self._opt("title") or f"Histogram — {col}")
         self._apply_figure_style(fig, ax)
         fig.tight_layout()
 

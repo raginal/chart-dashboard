@@ -47,6 +47,7 @@ class SmallMultiples(BaseChart):
             "trend_line":  {"label": "Trend line (Scatter)",      "type": "choice", "default": "None",
                             "choices": ["None", "Linear", "LOWESS", "Exponential"]},
             "trend_color": {"label": "Trend line colour",         "type": "text",   "default": MPL_TREND},
+            **BaseChart._title_style_options(),
         }
 
     def render(self, df: pd.DataFrame, selection: VariableSelection, fig: Figure) -> None:
@@ -174,7 +175,7 @@ class SmallMultiples(BaseChart):
         title   = self._opt("title") or f"{y_col} vs {x_col} — faceted by {fac_col}"
 
         fig.tight_layout(rect=[0.03, 0.04, 1.0, 0.93])
-        fig.suptitle(title, fontsize=12, fontweight='bold', y=0.98)
+        self._apply_suptitle(fig, title)
         fig.supxlabel(x_label, fontsize=10, y=0.01)
         fig.supylabel(y_label, fontsize=10, x=0.0)
         fig.patch.set_facecolor("white")

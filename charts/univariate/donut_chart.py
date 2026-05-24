@@ -37,6 +37,7 @@ class DonutChart(BaseChart):
             "show_pct":   {"label": "Show percentages","type": "bool",   "default": True},
             "show_count": {"label": "Show counts",    "type": "bool",   "default": False},
             "num_bins":   {"label": "Bins (numeric)", "type": "text",   "default": "8"},
+            **BaseChart._title_style_options(),
         }
 
     def render(self, df: pd.DataFrame, selection: VariableSelection, fig: Figure) -> None:
@@ -118,10 +119,7 @@ class DonutChart(BaseChart):
             at.set_color("#1E293B")
 
         x_label = VariableTransformer.axis_label(col, selection.x_transform())
-        ax.set_title(
-            self._opt("title") or f"Distribution — {x_label}",
-            fontsize=13, fontweight='bold', pad=14,
-        )
+        self._apply_title(ax, self._opt("title") or f"Distribution — {x_label}", pad=14)
 
         # Centre label showing total N
         ax.text(0, 0, f"{total:,}", ha='center', va='center',

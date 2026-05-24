@@ -31,6 +31,7 @@ class Heatmap(BaseChart):
             "palette": {"label": "Colour map",   "type": "choice", "default": "Blues",
                         "choices": PALETTE_CHOICES},
             "annot":   {"label": "Show values",  "type": "bool",   "default": True},
+            **BaseChart._title_style_options(),
         }
 
     def render(self, df: pd.DataFrame, selection: VariableSelection, fig: Figure) -> None:
@@ -89,7 +90,7 @@ class Heatmap(BaseChart):
         y_label = self._opt("y_label") or VariableTransformer.axis_label(y_col, selection.y_transform())
         ax.set_xlabel(x_label)
         ax.set_ylabel(y_label)
-        ax.set_title(self._opt("title") or "Heatmap", fontsize=13, fontweight='bold', pad=10)
+        self._apply_title(ax, self._opt("title") or "Heatmap")
         ax.tick_params(axis='x', rotation=45, labelsize=8)
         ax.tick_params(axis='y', rotation=0,  labelsize=8)
         fig.patch.set_facecolor("white")

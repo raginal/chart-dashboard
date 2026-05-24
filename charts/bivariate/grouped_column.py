@@ -33,6 +33,7 @@ class GroupedColumn(BaseChart):
             "palette":  {"label": "Colour palette",  "type": "choice", "default": MPL_DEFAULT_PALETTE,
                          "choices": PALETTE_CHOICES},
             "rotate_x": {"label": "Rotate X labels", "type": "bool",   "default": False},
+            **BaseChart._title_style_options(),
         }
 
     def render(self, df: pd.DataFrame, selection: VariableSelection, fig: Figure) -> None:
@@ -83,7 +84,6 @@ class GroupedColumn(BaseChart):
         x_label = self._opt("x_label") or VariableTransformer.axis_label(x_col, selection.x_transform())
         ax.set_xlabel(x_label)
         ax.set_ylabel(self._opt("y_label") or "Count")
-        ax.set_title(self._opt("title") or f"{y_col} by {x_col}",
-                     fontsize=13, fontweight='bold', pad=10)
+        self._apply_title(ax, self._opt("title") or f"{y_col} by {x_col}")
         self._apply_figure_style(fig, ax)
         fig.tight_layout()
