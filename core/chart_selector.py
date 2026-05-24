@@ -20,11 +20,12 @@ Type helpers
 ------------
   _is_numeric(t)     — INTERVAL or DATE
   _is_categorical(t) — NOMINAL or ORDINAL (strict)
-  _is_cat_like(t)    — NOMINAL, ORDINAL, or DATE
-                       DATE qualifies for all categorical chart rules in the
+  _is_cat_like(t)    — NOMINAL, ORDINAL, or LOCATION
+                       LOCATION qualifies for all categorical chart rules in the
                        bivariate / multivariate tabs (grouped / stacked columns,
                        heatmap, sankey, mosaic, box / violin / treemap as X,
-                       faceted charts as Y facet, small multiples as Z facet).
+                       faceted charts as Y facet, small multiples as Z facet),
+                       in addition to the tile map chart it already triggers.
                        Individual chart implementations already guard against
                        excessive cardinality.
   _is_date(t)        — DATE only
@@ -50,15 +51,16 @@ def _is_categorical(vtype: VariableType | None) -> bool:
 
 def _is_cat_like(vtype: VariableType | None) -> bool:
     """
-    NOMINAL, ORDINAL, or DATE.
+    NOMINAL, ORDINAL, or LOCATION.
 
-    DATE columns participate in every categorical chart rule for the bivariate
-    and multivariate tabs, in addition to the numeric rules they already
-    satisfy.  This lets analysts explore a date column as a grouping variable
-    (e.g. box-per-year, heatmap of date × category) without manually retyping
-    the column.  Chart render() methods already cap or warn on high cardinality.
+    LOCATION columns participate in every categorical chart rule for the bivariate
+    and multivariate tabs, in addition to the tile map chart they already trigger.
+    This lets analysts explore a location column as a grouping variable
+    (e.g. box-per-state, heatmap of state × category, small multiples faceted by
+    state) without retyping the column.  Chart render() methods already cap or
+    warn on high cardinality.
     """
-    return vtype in (VariableType.NOMINAL, VariableType.ORDINAL, VariableType.DATE)
+    return vtype in (VariableType.NOMINAL, VariableType.ORDINAL, VariableType.LOCATION)
 
 
 def _is_date(vtype: VariableType | None) -> bool:
