@@ -39,9 +39,9 @@ class ViolinPlot(BaseChart):
         y_col  = selection.y_var
         x_type = selection.x_type()
 
-        _is_cat = x_type in (VariableType.NOMINAL, VariableType.ORDINAL)
+        _is_cat = x_type in (VariableType.NOMINAL, VariableType.ORDINAL, VariableType.LOCATION)
 
-        # ── Bivariate mode: categorical X, numeric Y ──────────────────────────
+        # ── Bivariate mode: categorical/location X, numeric Y ─────────────────
         if y_col is not None and _is_cat:
             self._render_grouped(df, ax, x_col, y_col, selection)
         else:

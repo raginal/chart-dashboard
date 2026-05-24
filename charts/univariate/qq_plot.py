@@ -7,6 +7,7 @@ from scipy import stats
 
 from charts.base import BaseChart
 from core.chart_config import VariableSelection, ChartSpec
+from core.variable_classifier import VariableType
 from core.transformer import VariableTransformer
 from ui.palette import MPL_ACCENT, MPL_TREND
 
