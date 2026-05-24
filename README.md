@@ -66,7 +66,7 @@ The left panel contains three named variable slots. Each slot has:
 |---|---|---|
 | **X-Axis** | ✓ | Independent variable — the horizontal axis |
 | **Y-Axis** | — | Dependent variable — the vertical axis |
-| **Z-Axis** | — | Third variable — used for faceting (Small Multiples, categorical or location Z), Sankey flow sections (3-column), and scatter-plot colouring |
+| **Z-Axis** | — | Third variable — used for faceting (Small Multiples, categorical or location Z), Stacked Area colour bands, Sankey flow sections (3-column), and scatter-plot colouring |
 
 **Minimum for charts:**
 - Univariate charts require any single variable selected
@@ -204,7 +204,7 @@ The **Variable:** picker in the Univariate tab lets you choose which selected va
 | **Line Plot** | Numeric / Date | Numeric | Trends over a continuous or time axis |
 | **Faceted Histogram** | Numeric / Date | Categorical / Location | Distribution of X in a separate panel per Y value |
 | **Faceted Column Chart** | Categorical | Categorical / Location | Bar chart of X counts in a separate panel per Y value |
-| **US Tile Map** | **Location** | Numeric | Choropleth-style grid map; each US state coloured by the aggregated Y value. Aggregation (Mean / Sum / Count / Median / Min / Max) is configurable via Quick Edit. |
+| **US Tile Map** | **Location** | Numeric | Choropleth-style grid map; each US state coloured by the aggregated Y value. Aggregation function, state label visibility, and value display are all configurable via Quick Edit. |
 
 ### Multivariate (X + Y + Z required)
 
@@ -264,8 +264,8 @@ chartBuilder/
 │   ├── base.py                # BaseChart abstract class
 │   ├── registry.py            # CHART_REGISTRY — only file to edit when adding a chart
 │   ├── univariate/            # 9 chart modules
-│   ├── bivariate/             # 10 chart modules (Box + Violin render bivariate from univariate/)
-│   └── trivariate/            # 4 chart modules
+│   ├── bivariate/             # 9 chart modules (Box + Violin render bivariate from univariate/)
+│   └── trivariate/            # 5 chart modules
 │
 └── ui/
     ├── palette.py             # All colours + APP_STYLESHEET
