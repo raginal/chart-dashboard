@@ -10,6 +10,12 @@ Multiples, Faceted Histogram), Sankey sections, scatter-plot colouring, and
 any other role previously spread across those three slots.
 
 Emits selection_changed(VariableSelection) via a 300 ms debounce after any change.
+
+Transform availability by variable type
+---------------------------------------
+  Nominal / Ordinal / Location  → None only (no transforms make sense)
+  Date                          → None, Lag 1–3 (date shifting is meaningful)
+  Interval / Ratio              → all transforms
 """
 from __future__ import annotations
 from typing import Optional
@@ -30,6 +36,30 @@ from ui.dialogs.consolidate_dialog import ConsolidateDialog
 from ui.palette import PRIMARY, GREY_200, GREY_500
 
 DEBOUNCE_MS = 300
+
+# ── Transform availability by variable type ───────────────────────────────────
+
+_CATEGORICAL_TYPES = (VariableType.NOMINAL, VariableType.ORDINAL, VariableType.LOCATION)
+
+_TRANSFORMS_FOR: dict[VariableType, list[TransformType]] = {
+    VariableType.NOMINAL:  [TransformType.NONE],
+    VariableType.ORDINAL:  [TransformType.NONE],
+    VariableType.LOCATION: [TransformType.NONE],
+    VariableType.DATE: [
+        TransformType.NONE,
+        TransformType.LAG_1,
+        TransformType.LAG_2,
+        TransformType.LAG_3,
+    ],
+    VariableType.INTERVAL: list(TransformType),   # all
+}
+
+
+def _available_transforms(vtype: VariableType | None) -> list[TransformType]:
+    """Return the list of TransformType values valid for *vtype*."""
+    if vtype is None:
+        return [TransformType.NONE]
+    return _TRANSFORMS_FOR.get(vtype, list(TransformType))
 
 
 class VariableSlot(QWidget):
@@ -98,7 +128,7 @@ class VariableSlot(QWidget):
         self.type_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.type_combo.addItems([vt.value for vt in VariableType])
         self.type_combo.setToolTip("Variable type (auto-detected; editable)")
-        self.type_combo.currentIndexChanged.connect(self.changed.emit)
+        self.type_combo.currentIndexChanged.connect(self._on_type_changed)
         self.type_combo.setEnabled(False)
         row2.addWidget(self.type_combo, 1)
 
@@ -177,10 +207,13 @@ class VariableSlot(QWidget):
         self.clean_btn.setEnabled(False)
         self.changed.emit()
 
+    def set_dataframe(self, df: pd.DataFrame) -> None:
+        self._df = df
+
     # ── Internal slots ────────────────────────────────────────────────────────
 
     def _on_var_changed(self) -> None:
-        col = self.get_variable()
+        col     = self.get_variable()
         enabled = col is not None
         self.type_combo.setEnabled(enabled)
         self.transform_btn.setEnabled(enabled)
@@ -192,13 +225,28 @@ class VariableSlot(QWidget):
             self.type_combo.setCurrentText(vtype.value)
             self.type_combo.blockSignals(False)
 
-        self._transform = TransformType.NONE
-        self.transform_btn.setText("▼ None")
+        # Reset transform whenever the variable changes
+        self._set_transform(TransformType.NONE, emit=False)
+        self._update_transform_btn_tooltip()
+        self.changed.emit()
+
+    def _on_type_changed(self) -> None:
+        """
+        Called when the user manually changes the type selector.
+
+        If the currently-active transform is not valid for the new type,
+        silently reset it to None before emitting changed.
+        """
+        available = _available_transforms(self.get_type())
+        if self._transform not in available:
+            self._set_transform(TransformType.NONE, emit=False)
+        self._update_transform_btn_tooltip()
         self.changed.emit()
 
     def _show_transform_menu(self) -> None:
+        available = _available_transforms(self.get_type())
         menu = QMenu(self)
-        for tt in TransformType:
+        for tt in available:
             action = QAction(tt.value, self)
             action.setCheckable(True)
             action.setChecked(tt == self._transform)
@@ -208,11 +256,23 @@ class VariableSlot(QWidget):
             self.transform_btn.rect().bottomLeft()
         ))
 
-    def _set_transform(self, transform: TransformType) -> None:
+    def _set_transform(self, transform: TransformType, emit: bool = True) -> None:
         self._transform = transform
         short = transform.value.split()[0] if transform != TransformType.NONE else "None"
         self.transform_btn.setText(f"▼ {short}")
-        self.changed.emit()
+        if emit:
+            self.changed.emit()
+
+    def _update_transform_btn_tooltip(self) -> None:
+        """Show a tooltip explaining which transforms are available for the current type."""
+        vtype = self.get_type()
+        if vtype in _CATEGORICAL_TYPES:
+            tip = "No transforms available for categorical / location variables"
+        elif vtype == VariableType.DATE:
+            tip = "Available transforms: Lag 1–3 Periods"
+        else:
+            tip = "Apply a mathematical transformation to this variable"
+        self.transform_btn.setToolTip(tip)
 
     def _on_clean_clicked(self) -> None:
         col = self.get_variable()
@@ -232,9 +292,6 @@ class VariableSlot(QWidget):
             else:
                 self._consolidator.set_mapping(col, mapping)
             self.changed.emit()
-
-    def set_dataframe(self, df: pd.DataFrame) -> None:
-        self._df = df
 
 
 # ── VariablePanel ─────────────────────────────────────────────────────────────
