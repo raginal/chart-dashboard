@@ -66,7 +66,7 @@ The left panel contains three named variable slots. Each slot has:
 |---|---|---|
 | **X-Axis** | ✓ | Independent variable — the horizontal axis |
 | **Y-Axis** | — | Dependent variable — the vertical axis |
-| **Z-Axis** | — | Third variable — used for faceting (Small Multiples), Sankey flow sections (3-column), and scatter-plot colouring |
+| **Z-Axis** | — | Third variable — used for faceting (Small Multiples, categorical or location Z), Sankey flow sections (3-column), and scatter-plot colouring |
 
 **Minimum for charts:**
 - Univariate charts require any single variable selected
@@ -116,6 +116,8 @@ Click the **▼ Transform** button next to any variable to apply a mathematical 
 | **Lag 2 Periods** | shift(2) | |
 | **Lag 3 Periods** | shift(3) | |
 
+> **Available transforms depend on variable type:** Numeric → all transforms; Date → None + Lags 1–3 only; Categorical and Location → None only. The transform menu automatically shows only the valid options for the selected variable type.
+>
 > **Note:** Transforms that introduce NaN (log of zero/negative, lag at series edges) preserve row alignment — those rows will simply appear as missing in charts.
 
 ---
@@ -184,33 +186,35 @@ The **Variable:** picker in the Univariate tab lets you choose which selected va
 
 ### Bivariate
 
+"Categorical / Location" below means Nominal, Ordinal, or Location.
+
 | Chart | X type | Y type | Notes |
 |---|---|---|---|
-| **Grouped Column Chart** | Categorical | Categorical | Side-by-side bars showing counts per X × Y combination |
-| **Stacked Column Chart** | Categorical | Categorical | Stacked bars of counts; supports 100% normalised stacking |
-| **Box Plot** | Categorical | Numeric | Distribution of Y per X category |
-| **Violin Plot** | Categorical | Numeric | Distribution shape of Y per X category |
-| **Treemap** | Categorical | Numeric | Proportional size comparison |
-| **Heatmap** | Categorical | Categorical | Cell-level counts |
-| **Sankey Diagram** | Categorical | Categorical | 2-column flow (X → Y); gray node bars, coloured bezier flows |
-| **Mosaic Plot** | Categorical | Categorical | Proportional area; cells labelled with count & % |
+| **Grouped Column Chart** | Categorical / Location | Categorical / Location | Side-by-side bars showing counts per X × Y combination |
+| **Stacked Column Chart** | Categorical / Location | Categorical / Location | Stacked bars of counts; supports 100% normalised stacking |
+| **Box Plot** | Categorical / Location | Numeric | Distribution of Y per X group |
+| **Violin Plot** | Categorical / Location | Numeric | Distribution shape of Y per X group |
+| **Treemap** | Categorical / Location | Numeric | Proportional size comparison |
+| **Heatmap** | Categorical / Location | Categorical / Location | Cell-level counts |
+| **Sankey Diagram** | Categorical / Location | Categorical / Location | 2-column flow (X → Y); gray node bars, coloured bezier flows |
+| **Mosaic Plot** | Categorical / Location | Categorical / Location | Proportional area; cells labelled with count & % |
 | **Scatter Plot** | Numeric / Date | Numeric / Date | Z-Axis colours points when set (categorical → legend, numeric → colorbar); date axes auto-formatted |
 | **Hexbin Plot** | Numeric / Date | Numeric / Date | Scatter for large datasets with many overlapping points; date axes auto-formatted |
 | **Correlogram** | Numeric | Numeric | Pairwise correlations across all numeric columns in the dataset |
-| **Line Plot** | Numeric or Date | Numeric | Trends over a continuous or time axis |
-| **Stacked Area Chart** | Numeric or Date | Numeric | Cumulative trends over time |
-| **Faceted Histogram** | Numeric | Categorical | Distribution of X (numeric) in a separate panel per Y category |
-| **Faceted Column Chart** | Categorical | Categorical | Bar chart of X counts in a separate panel per Y category |
+| **Line Plot** | Numeric / Date | Numeric | Trends over a continuous or time axis |
+| **Stacked Area Chart** | Numeric / Date | Numeric | Cumulative trends over time |
+| **Faceted Histogram** | Numeric / Date | Categorical / Location | Distribution of X in a separate panel per Y value |
+| **Faceted Column Chart** | Categorical | Categorical / Location | Bar chart of X counts in a separate panel per Y value |
 | **US Tile Map** | **Location** | Numeric | Choropleth-style grid map; each US state coloured by the aggregated Y value. Aggregation (Mean / Sum / Count / Median / Min / Max) is configurable via Quick Edit. |
 
 ### Multivariate (X + Y + Z required)
 
 | Chart | X type | Y type | Z type | Best for |
 |---|---|---|---|---|
-| **Sankey Diagram** | Categorical | Categorical | Any | 3-column flow (X → Y → Z); gray node bars, coloured bezier flows |
-| **Small Multiples** | Numeric / Date | Numeric / Date | Categorical | Scatter or Line panels of Y vs X, one panel per Z category |
+| **Sankey Diagram** | Categorical / Location | Categorical / Location | Any | 3-column flow (X → Y → Z); gray node bars, coloured bezier flows |
+| **Small Multiples** | Numeric / Date | Numeric / Date | Categorical / Location | Scatter or Line panels of Y vs X, one panel per Z value |
 
-> **Scatter Plot Z-Axis colouring:** when Z-Axis is set, scatter points are coloured by that variable. Categorical Z → distinct colours + legend. Numeric Z → viridis gradient + colour bar.
+> **Scatter Plot Z-Axis colouring:** when Z-Axis is set, scatter points are coloured by that variable. Categorical / Location Z → distinct colours + legend. Numeric Z → viridis gradient + colour bar.
 >
 > **Small Multiples:** facet sort order (Ascending / Descending / As-is), sub-chart type (Scatter / Line), shared axis ranges, same-colour-across-panels, and (for Scatter) trend lines (Linear / LOWESS / Exponential) are all configurable via **Quick Edit**.
 
