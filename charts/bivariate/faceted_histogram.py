@@ -35,14 +35,15 @@ class FacetedHistogram(BaseChart):
 
     def _default_edit_options(self) -> dict:
         return {
-            "title":      {"label": "Title",          "type": "text",   "default": ""},
-            "palette":    {"label": "Colour palette",  "type": "choice", "default": MPL_DEFAULT_PALETTE,
+            "title":      {"label": "Title",                      "type": "text",   "default": ""},
+            "color":      {"label": "Bar colour (Histogram)",     "type": "text",   "default": MPL_ACCENT},
+            "palette":    {"label": "Bar palette (Column Chart)", "type": "choice", "default": MPL_DEFAULT_PALETTE,
                            "choices": PALETTE_CHOICES},
-            "ncols":      {"label": "Columns",         "type": "text",   "default": "3"},
-            "num_bins":   {"label": "Bins (numeric X)","type": "text",   "default": "10"},
-            "sort_order": {"label": "Facet order",     "type": "choice", "default": "Ascending",
+            "ncols":      {"label": "Columns",                    "type": "text",   "default": "3"},
+            "num_bins":   {"label": "Bins (numeric X)",           "type": "text",   "default": "10"},
+            "sort_order": {"label": "Facet order",                "type": "choice", "default": "Ascending",
                            "choices": ["Ascending", "Descending", "As-is"]},
-            "shared_x":   {"label": "Shared X range",  "type": "bool",   "default": True},
+            "shared_x":   {"label": "Shared X range",             "type": "bool",   "default": True},
         }
 
     def render(self, df: pd.DataFrame, selection: VariableSelection, fig: Figure) -> None:
@@ -93,18 +94,26 @@ class FacetedHistogram(BaseChart):
 
         nrows = int(np.ceil(len(facets) / ncols))
 
-        # Colours per facet
-        palette = self._opt("palette") or MPL_DEFAULT_PALETTE
-        try:
-            cmap   = plt.cm.get_cmap(palette, max(len(facets), 2))
-            colors = [cmap(i / max(len(facets) - 1, 1)) for i in range(len(facets))]
-        except Exception:
-            colors = [MPL_ACCENT] * len(facets)
-
         # Detect X type and prepare data
-        x_type    = selection.x_type()
+        x_type     = selection.x_type()
         is_numeric = x_type in (VariableType.INTERVAL, VariableType.DATE)
         x_numeric  = pd.to_numeric(sub[x_col], errors='coerce') if is_numeric else None
+
+        # ── Colours ───────────────────────────────────────────────────────────
+        # Histogram: single accent colour, same across all panels
+        # Column chart: palette mapped to X categories, same mapping across all panels
+        hist_color = self._opt("color") or MPL_ACCENT
+        palette    = self._opt("palette") or MPL_DEFAULT_PALETTE
+
+        # For categorical: consistent label ordering + per-category colour map
+        if not is_numeric:
+            all_cats = sorted(sub[x_col].astype(str).unique(), key=str)
+            try:
+                cmap     = plt.cm.get_cmap(palette, max(len(all_cats), 2))
+                x_colors = [cmap(i / max(len(all_cats) - 1, 1))
+                             for i in range(len(all_cats))]
+            except Exception:
+                x_colors = [MPL_ACCENT] * len(all_cats)
 
         # Compute shared bin edges for numeric X
         try:
@@ -120,13 +129,9 @@ class FacetedHistogram(BaseChart):
             if x_min < x_max:
                 bin_edges = np.linspace(x_min, x_max, n_bins + 1)
 
-        # For categorical: consistent label ordering
-        if not is_numeric:
-            all_cats = sorted(sub[x_col].astype(str).unique(), key=str)
-
         axes = fig.subplots(nrows, ncols, squeeze=False)
 
-        for idx, (facet, color) in enumerate(zip(facets, colors)):
+        for idx, facet in enumerate(facets):
             row, col = divmod(idx, ncols)
             ax = axes[row][col]
             mask   = sub[fac_col] == facet
@@ -139,15 +144,16 @@ class FacetedHistogram(BaseChart):
                             transform=ax.transAxes, color="#94A3B8", fontsize=8)
                 else:
                     if bin_edges is not None and shared_x:
-                        ax.hist(x_num, bins=bin_edges, color=color, alpha=0.85,
+                        ax.hist(x_num, bins=bin_edges, color=hist_color, alpha=0.85,
                                 edgecolor="white", linewidth=0.5, zorder=2)
                     else:
-                        ax.hist(x_num, bins=n_bins, color=color, alpha=0.85,
+                        ax.hist(x_num, bins=n_bins, color=hist_color, alpha=0.85,
                                 edgecolor="white", linewidth=0.5, zorder=2)
             else:
                 counts = x_vals.astype(str).value_counts()
                 counts = counts.reindex(all_cats, fill_value=0)
-                ax.bar(range(len(all_cats)), counts.values, color=color, alpha=0.85,
+                # Bars coloured by X category — same mapping across every panel
+                ax.bar(range(len(all_cats)), counts.values, color=x_colors, alpha=0.85,
                        zorder=2)
                 ax.set_xticks(range(len(all_cats)))
                 n_cats = len(all_cats)

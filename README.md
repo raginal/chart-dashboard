@@ -202,7 +202,6 @@ The **Variable:** picker in the Univariate tab lets you choose which selected va
 | **Hexbin Plot** | Numeric / Date | Numeric / Date | Scatter for large datasets with many overlapping points; date axes auto-formatted |
 | **Correlogram** | Numeric | Numeric | Pairwise correlations across all numeric columns in the dataset |
 | **Line Plot** | Numeric / Date | Numeric | Trends over a continuous or time axis |
-| **Stacked Area Chart** | Numeric / Date | Numeric | Cumulative trends over time |
 | **Faceted Histogram** | Numeric / Date | Categorical / Location | Distribution of X in a separate panel per Y value |
 | **Faceted Column Chart** | Categorical | Categorical / Location | Bar chart of X counts in a separate panel per Y value |
 | **US Tile Map** | **Location** | Numeric | Choropleth-style grid map; each US state coloured by the aggregated Y value. Aggregation (Mean / Sum / Count / Median / Min / Max) is configurable via Quick Edit. |
@@ -212,6 +211,7 @@ The **Variable:** picker in the Univariate tab lets you choose which selected va
 | Chart | X type | Y type | Z type | Best for |
 |---|---|---|---|---|
 | **Sankey Diagram** | Categorical / Location | Categorical / Location | Any | 3-column flow (X → Y → Z); gray node bars, coloured bezier flows |
+| **Stacked Area Chart** | Numeric / Date | Numeric | Categorical / Location | Y (aggregated per Z group) stacked cumulatively over X; one colour band per Z value |
 | **Small Multiples** | Numeric / Date | Numeric / Date | Categorical / Location | Scatter or Line panels of Y vs X, one panel per Z value |
 
 > **Scatter Plot Z-Axis colouring:** when Z-Axis is set, scatter points are coloured by that variable. Categorical / Location Z → distinct colours + legend. Numeric Z → viridis gradient + colour bar.

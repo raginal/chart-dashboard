@@ -121,6 +121,9 @@ class SmallMultiples(BaseChart):
         trend       = self._opt("trend_line") or "None"
         trend_color = self._opt("trend_color") or MPL_TREND
 
+        # Bottom-left panel index: used to limit redundant LOWESS/Exp legends
+        bottom_left_idx = (nrows - 1) * ncols
+
         for idx, (facet, color) in enumerate(zip(facets, colors)):
             row, col = divmod(idx, ncols)
             ax = axes[row][col]
@@ -136,7 +139,11 @@ class SmallMultiples(BaseChart):
                 if trend != "None":
                     xv = xs[valid].values.astype(float)
                     yv = ys[valid].values.astype(float)
-                    self._draw_trend(ax, xv, yv, trend, trend_color)
+                    # LOWESS / Exponential: show legend only on bottom-left panel
+                    # Linear: always show (r value is informative per panel)
+                    show_legend = (trend == "Linear") or (idx == bottom_left_idx)
+                    self._draw_trend(ax, xv, yv, trend, trend_color,
+                                     show_legend=show_legend)
 
             elif chart_type == "Line":
                 valid = xs.notna() & ys.notna()
@@ -175,8 +182,14 @@ class SmallMultiples(BaseChart):
     # ── Trend line helper ──────────────────────────────────────────────────────
 
     def _draw_trend(self, ax, xv: np.ndarray, yv: np.ndarray,
-                    trend: str, color: str) -> None:
-        """Draw a trend line onto *ax*.  Silently skips if data is insufficient."""
+                    trend: str, color: str, show_legend: bool = True) -> None:
+        """Draw a trend line onto *ax*.  Silently skips if data is insufficient.
+
+        show_legend controls whether a legend entry is added.  For Linear the
+        r-value is informative per panel so it is always shown.  For LOWESS and
+        Exponential the label is the same on every panel, so callers pass
+        show_legend=False on all panels except the bottom-left one.
+        """
         if len(xv) < 3:
             return
         try:
@@ -195,8 +208,9 @@ class SmallMultiples(BaseChart):
                 smoothed_s = smoothed[np.argsort(smoothed[:, 0])]
                 ax.plot(smoothed_s[:, 0], smoothed_s[:, 1],
                         color=color, linewidth=1.4,
-                        label="LOWESS", zorder=4)
-                ax.legend(fontsize=7, framealpha=0.8)
+                        label="LOWESS" if show_legend else "_nolegend_", zorder=4)
+                if show_legend:
+                    ax.legend(fontsize=7, framealpha=0.8)
 
             elif trend == "Exponential":
                 from scipy.optimize import curve_fit
@@ -210,7 +224,8 @@ class SmallMultiples(BaseChart):
                     xs_fit = np.linspace(xs_shifted.min(), xs_shifted.max(), 200)
                     ax.plot(xs_fit + x_shift, _exp_func(xs_fit, *popt),
                             color=color, linewidth=1.4,
-                            label="Exp", zorder=4)
-                    ax.legend(fontsize=7, framealpha=0.8)
+                            label="Exp" if show_legend else "_nolegend_", zorder=4)
+                    if show_legend:
+                        ax.legend(fontsize=7, framealpha=0.8)
         except Exception:
             pass   # silently skip if trend cannot be computed for this panel

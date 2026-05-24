@@ -160,11 +160,10 @@ class ChartSelector:
             # ── numeric × numeric ─────────────────────────────────────────────
             if _is_numeric(x_t) and _is_numeric(y_t):
                 biv += [
-                    ChartSpec("scatter_plot",  "bivariate", "Scatter Plot"),
-                    ChartSpec("hexbin",        "bivariate", "Hexbin Plot"),
-                    ChartSpec("correlogram",   "bivariate", "Correlogram"),
-                    ChartSpec("line_plot",     "bivariate", "Line Plot"),
-                    ChartSpec("stacked_area",  "bivariate", "Stacked Area Chart"),
+                    ChartSpec("scatter_plot", "bivariate", "Scatter Plot"),
+                    ChartSpec("hexbin",       "bivariate", "Hexbin Plot"),
+                    ChartSpec("correlogram",  "bivariate", "Correlogram"),
+                    ChartSpec("line_plot",    "bivariate", "Line Plot"),
                 ]
 
             # ── Faceted chart: any non-location X, cat-like Y as facet ────────
@@ -197,6 +196,7 @@ class ChartSelector:
 
             if _is_numeric(x_t) and _is_numeric(y_t) and _is_cat_like(z_t):
                 triv.append(ChartSpec("small_multiples", "trivariate", "Small Multiples"))
+                triv.append(ChartSpec("stacked_area",    "trivariate", "Stacked Area Chart"))
 
             if triv:
                 result["trivariate"] = triv
