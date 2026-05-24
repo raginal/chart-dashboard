@@ -211,11 +211,13 @@ class MainWindow(QMainWindow):
             # 4. Send to dashboard
             self.chart_dashboard.set_data(df_work, selection, applicable)
 
-            # Status summary
+            # Status summary ("trivariate" shown as "multivariate" to the user)
+            _DIM_LABEL = {"univariate": "univariate", "bivariate": "bivariate",
+                          "trivariate": "multivariate"}
             parts = []
             for dim, specs in applicable.items():
                 if specs:
-                    parts.append(f"{len(specs)} {dim}")
+                    parts.append(f"{len(specs)} {_DIM_LABEL.get(dim, dim)}")
             self._status.showMessage(
                 f"Showing: {', '.join(parts)} chart{'s' if total_charts != 1 else ''}."
             )

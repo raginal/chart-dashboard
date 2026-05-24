@@ -15,6 +15,20 @@ Tab activation
   Univariate  : any variable selected
   Bivariate   : has_x AND has_y
   Trivariate  : has_x AND has_y AND has_z
+
+Type helpers
+------------
+  _is_numeric(t)     — INTERVAL or DATE
+  _is_categorical(t) — NOMINAL or ORDINAL (strict)
+  _is_cat_like(t)    — NOMINAL, ORDINAL, or DATE
+                       DATE qualifies for all categorical chart rules in the
+                       bivariate / multivariate tabs (grouped / stacked columns,
+                       heatmap, sankey, mosaic, box / violin / treemap as X,
+                       faceted charts as Y facet, small multiples as Z facet).
+                       Individual chart implementations already guard against
+                       excessive cardinality.
+  _is_date(t)        — DATE only
+  _is_location(t)    — LOCATION only
 """
 
 from __future__ import annotations
@@ -25,12 +39,26 @@ from core.variable_classifier import VariableType
 # ── Type-check helpers ────────────────────────────────────────────────────────
 
 def _is_numeric(vtype: VariableType | None) -> bool:
-    """Interval/Ratio or Date are treated as numeric for chart purposes."""
+    """INTERVAL or DATE — continuous axis."""
     return vtype in (VariableType.INTERVAL, VariableType.DATE)
 
 
 def _is_categorical(vtype: VariableType | None) -> bool:
+    """Strictly NOMINAL or ORDINAL (excludes DATE)."""
     return vtype in (VariableType.NOMINAL, VariableType.ORDINAL)
+
+
+def _is_cat_like(vtype: VariableType | None) -> bool:
+    """
+    NOMINAL, ORDINAL, or DATE.
+
+    DATE columns participate in every categorical chart rule for the bivariate
+    and multivariate tabs, in addition to the numeric rules they already
+    satisfy.  This lets analysts explore a date column as a grouping variable
+    (e.g. box-per-year, heatmap of date × category) without manually retyping
+    the column.  Chart render() methods already cap or warn on high cardinality.
+    """
+    return vtype in (VariableType.NOMINAL, VariableType.ORDINAL, VariableType.DATE)
 
 
 def _is_date(vtype: VariableType | None) -> bool:
@@ -79,16 +107,16 @@ class ChartSelector:
             if col is not None
         ]
         _any_selected    = len(all_selected) > 0
-        _any_numeric     = any(_is_numeric(vt)      for _, vt in all_selected)
-        _any_categorical = any(_is_categorical(vt)  for _, vt in all_selected)
-        _any_location    = any(_is_location(vt)     for _, vt in all_selected)
+        _any_numeric     = any(_is_numeric(vt)     for _, vt in all_selected)
+        _any_categorical = any(_is_categorical(vt) for _, vt in all_selected)
+        _any_location    = any(_is_location(vt)    for _, vt in all_selected)
 
         if _any_selected:
             uni: list[ChartSpec] = []
-            # Donut & Column charts: counts per category — for nominal, ordinal, or location
+            # Donut & Column — strictly categorical or location only (not date)
             if _any_categorical or _any_location:
-                uni.append(ChartSpec("donut_chart",   "univariate", "Donut Chart"))
-                uni.append(ChartSpec("column_chart",  "univariate", "Column Chart"))
+                uni.append(ChartSpec("donut_chart",  "univariate", "Donut Chart"))
+                uni.append(ChartSpec("column_chart", "univariate", "Column Chart"))
             if _any_numeric:
                 uni += [
                     ChartSpec("box_plot",          "univariate", "Box Plot"),
@@ -102,47 +130,52 @@ class ChartSelector:
             result["univariate"] = uni
 
         # ── Bivariate ─────────────────────────────────────────────────────────
-        # • cat(x)  + cat(y)     → Grouped/Stacked Column, Heatmap, Sankey, Mosaic,
-        #                          Faceted Column Chart
-        # • cat(x)  + num(y)     → Box, Violin, Treemap
-        # • num(x)  + num(y)     → Scatter, Hexbin, Correlogram, Line, Stacked Area
-        # • any(x)  + cat(y)     → Faceted Histogram (num x) / Faceted Column (cat x)
-        # • loc(x)  + num(y)     → US Tile Map
+        # Categorical rules use _is_cat_like so DATE qualifies alongside
+        # NOMINAL/ORDINAL.  Numeric rules use _is_numeric (unchanged).
+        #
+        # cat-like × cat-like  → Grouped/Stacked Column, Heatmap, Sankey, Mosaic
+        # cat-like × numeric   → Box, Violin, Treemap
+        # numeric  × numeric   → Scatter, Hexbin, Correlogram, Line, Stacked Area
+        # any      × cat-like  → Faceted Histogram or Faceted Column Chart
+        # location × numeric   → US Tile Map
         biv: list[ChartSpec] = []
 
         if has_x and has_y:
-            if _is_categorical(x_t) and _is_categorical(y_t):
+            # ── cat-like × cat-like ───────────────────────────────────────────
+            if _is_cat_like(x_t) and _is_cat_like(y_t):
                 biv.append(ChartSpec("grouped_column", "bivariate", "Grouped Column Chart"))
                 biv.append(ChartSpec("stacked_column", "bivariate", "Stacked Column Chart"))
+                biv.append(ChartSpec("heatmap",        "bivariate", "Heatmap"))
+                biv.append(ChartSpec("sankey",         "bivariate", "Sankey Diagram"))
+                biv.append(ChartSpec("mosaic_plot",    "bivariate", "Mosaic Plot"))
 
-            if _is_categorical(x_t) and _is_numeric(y_t):
+            # ── cat-like × numeric ────────────────────────────────────────────
+            if _is_cat_like(x_t) and _is_numeric(y_t):
                 biv.append(ChartSpec("box_plot",    "bivariate", "Box Plot"))
                 biv.append(ChartSpec("violin_plot", "bivariate", "Violin Plot"))
                 biv.append(ChartSpec("treemap",     "bivariate", "Treemap"))
 
-            if _is_categorical(x_t) and _is_categorical(y_t):
-                biv.append(ChartSpec("heatmap",     "bivariate", "Heatmap"))
-                biv.append(ChartSpec("sankey",      "bivariate", "Sankey Diagram"))
-                biv.append(ChartSpec("mosaic_plot", "bivariate", "Mosaic Plot"))
-
+            # ── numeric × numeric ─────────────────────────────────────────────
             if _is_numeric(x_t) and _is_numeric(y_t):
-                biv.append(ChartSpec("scatter_plot",  "bivariate", "Scatter Plot"))
-                biv.append(ChartSpec("hexbin",        "bivariate", "Hexbin Plot"))
-                biv.append(ChartSpec("correlogram",   "bivariate", "Correlogram"))
+                biv += [
+                    ChartSpec("scatter_plot",  "bivariate", "Scatter Plot"),
+                    ChartSpec("hexbin",        "bivariate", "Hexbin Plot"),
+                    ChartSpec("correlogram",   "bivariate", "Correlogram"),
+                    ChartSpec("line_plot",     "bivariate", "Line Plot"),
+                    ChartSpec("stacked_area",  "bivariate", "Stacked Area Chart"),
+                ]
 
-            if (_is_numeric(x_t) or _is_date(x_t)) and _is_numeric(y_t):
-                biv.append(ChartSpec("line_plot",    "bivariate", "Line Plot"))
-                biv.append(ChartSpec("stacked_area", "bivariate", "Stacked Area Chart"))
-
-            # Faceted chart: X (any non-location type) faceted by Y (categorical)
-            if _is_categorical(y_t) and not _is_location(x_t):
+            # ── Faceted chart: any non-location X, cat-like Y as facet ────────
+            # Use strict _is_categorical for naming: DATE x → "Faceted Histogram"
+            #   (faceted_histogram.py bins date X as numeric)
+            if _is_cat_like(y_t) and not _is_location(x_t):
                 facet_name = (
                     "Faceted Column Chart" if _is_categorical(x_t)
                     else "Faceted Histogram"
                 )
                 biv.append(ChartSpec("faceted_histogram", "bivariate", facet_name))
 
-            # US Tile Map: location X + numeric Y
+            # ── US Tile Map: location × numeric ───────────────────────────────
             if _is_location(x_t) and _is_numeric(y_t):
                 biv.append(ChartSpec("tile_map", "bivariate", "US Tile Map"))
 
@@ -150,16 +183,17 @@ class ChartSelector:
             result["bivariate"] = biv
 
         # ── Trivariate (X + Y + Z) ────────────────────────────────────────────
-        # • Sankey 3-column        — cat(x) × cat(y) × z (any)
-        # • Small Multiples        — numeric/date(x) × numeric/date(y) × cat(z)
+        # • Sankey 3-column  — cat-like(x) × cat-like(y) × z (any)
+        # • Small Multiples  — numeric(x) × numeric(y) × cat-like(z)
+        #   DATE z facets the grid just like a categorical group variable.
         if has_x and has_y and has_z:
             triv: list[ChartSpec] = []
             z_t = selection.group_type()
 
-            if _is_categorical(x_t) and _is_categorical(y_t):
+            if _is_cat_like(x_t) and _is_cat_like(y_t):
                 triv.append(ChartSpec("sankey", "trivariate", "Sankey Diagram"))
 
-            if _is_numeric(x_t) and _is_numeric(y_t) and _is_categorical(z_t):
+            if _is_numeric(x_t) and _is_numeric(y_t) and _is_cat_like(z_t):
                 triv.append(ChartSpec("small_multiples", "trivariate", "Small Multiples"))
 
             if triv:
