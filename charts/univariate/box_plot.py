@@ -124,7 +124,9 @@ class BoxPlot(BaseChart):
         ax.set_xticks(range(1, len(labels) + 1))
         n        = len(labels)
         max_len  = max((len(str(l)) for l in labels), default=0)
-        rotate   = n > 6 or max_len > 8
+        # Rotate only when labels would likely overlap: product of count × longest
+        # label > 80, or too many categories regardless of label length.
+        rotate   = (n * max_len) > 80 or n > 12
         ax.set_xticklabels(
             labels,
             rotation=45 if rotate else 0,
