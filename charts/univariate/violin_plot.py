@@ -2,14 +2,13 @@
 from __future__ import annotations
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
 from charts.base import BaseChart
 from core.chart_config import VariableSelection, ChartSpec
 from core.variable_classifier import VariableType
 from core.transformer import VariableTransformer
-from ui.palette import MPL_ACCENT, MPL_DEFAULT_PALETTE, PALETTE_CHOICES
+from ui.palette import MPL_ACCENT
 
 
 class ViolinPlot(BaseChart):
@@ -23,12 +22,10 @@ class ViolinPlot(BaseChart):
 
     def _default_edit_options(self) -> dict:
         return {
-            "title":    {"label": "Title",        "type": "text",   "default": ""},
-            "x_label":  {"label": "X-axis label",  "type": "text",   "default": ""},
-            "show_box": {"label": "Show inner box", "type": "bool",   "default": True},
-            "color":    {"label": "Violin colour",  "type": "text",   "default": MPL_ACCENT},
-            "palette":  {"label": "Group palette",  "type": "choice", "default": MPL_DEFAULT_PALETTE,
-                         "choices": PALETTE_CHOICES},
+            "title":    {"label": "Title",        "type": "text", "default": ""},
+            "x_label":  {"label": "X-axis label",  "type": "text", "default": ""},
+            "show_box": {"label": "Show inner box", "type": "bool", "default": True},
+            "color":    {"label": "Violin colour",  "type": "text", "default": MPL_ACCENT},
         }
 
     def render(self, df: pd.DataFrame, selection: VariableSelection, fig: Figure) -> None:
@@ -90,7 +87,7 @@ class ViolinPlot(BaseChart):
             self._add_sample_note(ax, 50_000)
 
     def _render_grouped(self, df, ax, x_col, y_col, selection):
-        """One violin per category of x_col."""
+        """One violin per category of x_col — single colour."""
         df_work, sampled = self._large_data_sample(df, 50_000)
         cats = sorted(df_work[x_col].dropna().unique(), key=str)
         MAX_CATS = 20
@@ -111,18 +108,13 @@ class ViolinPlot(BaseChart):
                     ha='center', va='center', transform=ax.transAxes, color="#94A3B8")
             return
 
-        palette = self._opt("palette") or MPL_DEFAULT_PALETTE
-        try:
-            cmap   = plt.cm.get_cmap(palette, len(groups))
-            colors = [cmap(i / max(len(groups) - 1, 1)) for i in range(len(groups))]
-        except Exception:
-            colors = [MPL_ACCENT] * len(groups)
+        color = self._opt("color") or MPL_ACCENT
 
         parts = ax.violinplot(groups, positions=positions,
                               showmeans=False, showmedians=True, showextrema=True)
 
-        for i, pc in enumerate(parts['bodies']):
-            pc.set_facecolor(colors[i])
+        for pc in parts['bodies']:
+            pc.set_facecolor(color)
             pc.set_alpha(0.75)
         for part_name in ('cbars', 'cmins', 'cmaxes', 'cmedians'):
             if part_name in parts:

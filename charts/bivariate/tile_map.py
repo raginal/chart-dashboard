@@ -64,6 +64,18 @@ _NAME_TO_ABBREV: dict[str, str] = {
 }
 
 
+def _fmt_tile_value(v: float) -> str:
+    """Compact number formatter for tile labels (e.g. 1.2M, 34.5K, 3.1)."""
+    av = abs(v)
+    if av >= 1_000_000:
+        return f"{v / 1_000_000:.1f}M"
+    if av >= 1_000:
+        return f"{v / 1_000:.1f}K"
+    if av >= 100:
+        return f"{v:.0f}"
+    return f"{v:.1f}"
+
+
 def _to_abbrev(value: str) -> str | None:
     """Normalise a state name or abbreviation to a two-letter abbreviation."""
     v = str(value).strip()
@@ -85,12 +97,13 @@ class TileMap(BaseChart):
 
     def _default_edit_options(self) -> dict:
         return {
-            "title":     {"label": "Title",          "type": "text",   "default": ""},
-            "palette":   {"label": "Colour palette",  "type": "choice", "default": "Blues",
-                          "choices": PALETTE_CHOICES},
-            "agg_func":  {"label": "Aggregation",     "type": "choice", "default": "Mean",
-                          "choices": ["Mean", "Sum", "Count", "Median", "Min", "Max"]},
-            "show_label":{"label": "Show state labels","type": "bool",   "default": True},
+            "title":      {"label": "Title",           "type": "text",   "default": ""},
+            "palette":    {"label": "Colour palette",   "type": "choice", "default": "Blues",
+                           "choices": PALETTE_CHOICES},
+            "agg_func":   {"label": "Aggregation",      "type": "choice", "default": "Mean",
+                           "choices": ["Mean", "Sum", "Count", "Median", "Min", "Max"]},
+            "show_label": {"label": "Show state labels", "type": "bool",   "default": True},
+            "show_value": {"label": "Show values",       "type": "bool",   "default": False},
         }
 
     def render(self, df: pd.DataFrame, selection: VariableSelection, fig: Figure) -> None:
@@ -140,9 +153,11 @@ class TileMap(BaseChart):
         norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
 
         # ── Draw tiles ────────────────────────────────────────────────────────
-        tile_size = 0.9        # fraction of cell (leaves a small gap)
-        gap       = (1 - tile_size) / 2
-        show_lbl  = bool(self._opt("show_label"))
+        tile_size  = 0.9        # fraction of cell (leaves a small gap)
+        gap        = (1 - tile_size) / 2
+        show_lbl   = bool(self._opt("show_label"))
+        show_val   = bool(self._opt("show_value"))
+        both       = show_lbl and show_val
 
         for abbrev, (row, col) in _TILEMAP.items():
             # Invert row so row 0 is at the top
@@ -150,13 +165,14 @@ class TileMap(BaseChart):
             x = col
 
             if abbrev in state_vals.index:
-                val   = state_vals[abbrev]
-                color = cmap(norm(val))
-                edge  = "white"
+                val       = state_vals[abbrev]
+                color     = cmap(norm(val))
+                edge      = "white"
                 lbl_color = "#0F172A" if mcolors.rgb_to_hsv(color[:3])[2] > 0.5 else "white"
             else:
-                color = "#E2E8F0"   # light grey for missing states
-                edge  = "white"
+                val       = None
+                color     = "#E2E8F0"   # light grey for missing states
+                edge      = "white"
                 lbl_color = "#94A3B8"
 
             rect = mpatches.FancyBboxPatch(
@@ -167,9 +183,19 @@ class TileMap(BaseChart):
             ax.add_patch(rect)
 
             if show_lbl:
-                ax.text(x + 0.5, y + 0.5, abbrev,
+                # When both labels are shown, shift abbreviation up to make room
+                lbl_y = (y + 0.63) if both else (y + 0.5)
+                ax.text(x + 0.5, lbl_y, abbrev,
                         ha='center', va='center',
-                        fontsize=7, fontweight='bold', color=lbl_color)
+                        fontsize=6 if both else 7,
+                        fontweight='bold', color=lbl_color)
+
+            if show_val and val is not None:
+                val_str = _fmt_tile_value(val)
+                val_y   = (y + 0.33) if both else (y + 0.5)
+                ax.text(x + 0.5, val_y, val_str,
+                        ha='center', va='center',
+                        fontsize=5.5, color=lbl_color)
 
         # ── Axes housekeeping ─────────────────────────────────────────────────
         ax.set_xlim(-0.2, _NCOLS + 0.2)

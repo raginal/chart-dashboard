@@ -2,14 +2,13 @@
 from __future__ import annotations
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
 from charts.base import BaseChart
 from core.chart_config import VariableSelection, ChartSpec
 from core.variable_classifier import VariableType
 from core.transformer import VariableTransformer
-from ui.palette import MPL_ACCENT, MPL_DEFAULT_PALETTE, PALETTE_CHOICES
+from ui.palette import MPL_ACCENT
 
 
 class BoxPlot(BaseChart):
@@ -23,12 +22,10 @@ class BoxPlot(BaseChart):
 
     def _default_edit_options(self) -> dict:
         return {
-            "title":       {"label": "Title",        "type": "text",   "default": ""},
-            "x_label":     {"label": "X-axis label",  "type": "text",   "default": ""},
-            "show_points": {"label": "Show points",   "type": "bool",   "default": False},
-            "color":       {"label": "Box colour",    "type": "text",   "default": MPL_ACCENT},
-            "palette":     {"label": "Group palette", "type": "choice", "default": MPL_DEFAULT_PALETTE,
-                            "choices": PALETTE_CHOICES},
+            "title":       {"label": "Title",        "type": "text", "default": ""},
+            "x_label":     {"label": "X-axis label",  "type": "text", "default": ""},
+            "show_points": {"label": "Show points",   "type": "bool", "default": False},
+            "color":       {"label": "Box colour",    "type": "text", "default": MPL_ACCENT},
         }
 
     def render(self, df: pd.DataFrame, selection: VariableSelection, fig: Figure) -> None:
@@ -85,7 +82,7 @@ class BoxPlot(BaseChart):
                      fontsize=13, fontweight='bold', pad=10)
 
     def _render_grouped(self, df, ax, x_col, y_col, selection):
-        """Box per category of x_col, values = y_col."""
+        """Box per category of x_col, values = y_col — single colour."""
         cats = sorted(df[x_col].dropna().unique(), key=str)
         MAX_CATS = 30
         if len(cats) > MAX_CATS:
@@ -104,12 +101,7 @@ class BoxPlot(BaseChart):
                     ha='center', va='center', transform=ax.transAxes, color="#94A3B8")
             return
 
-        palette = self._opt("palette") or MPL_DEFAULT_PALETTE
-        try:
-            cmap   = plt.cm.get_cmap(palette, len(groups))
-            colors = [cmap(i / max(len(groups) - 1, 1)) for i in range(len(groups))]
-        except Exception:
-            colors = [MPL_ACCENT] * len(groups)
+        color = self._opt("color") or MPL_ACCENT
 
         bp = ax.boxplot(groups, vert=True, patch_artist=True,
                         medianprops=dict(color="#0F172A", linewidth=2),
@@ -117,14 +109,14 @@ class BoxPlot(BaseChart):
                         capprops=dict(color="#475569"),
                         flierprops=dict(marker='o', markersize=4, alpha=0.5, linestyle='none'))
 
-        for patch, color in zip(bp['boxes'], colors):
+        for patch in bp['boxes']:
             patch.set_facecolor(color)
             patch.set_alpha(0.75)
-        for flier, color in zip(bp['fliers'], colors):
+        for flier in bp['fliers']:
             flier.set_markerfacecolor(color)
 
         if self._opt("show_points"):
-            for i, (group, color) in enumerate(zip(groups, colors)):
+            for i, group in enumerate(groups):
                 jitter = np.random.uniform(-0.12, 0.12, size=len(group))
                 ax.scatter(i + 1 + jitter, group, alpha=0.25, s=6,
                            color=color, zorder=3)
