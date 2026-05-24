@@ -85,16 +85,18 @@ chartBuilder auto-detects variable types on import. You can override any type us
 | **Ordinal** | Ordered categories (e.g. Likert scales 1–5, Education levels) |
 | **Interval/Ratio** | Numeric continuous data (e.g. Income, Age, Temperature) |
 | **Date** | Date or datetime columns (e.g. 2024-01-15, Jan 2024) |
+| **Location** | US state names or abbreviations (e.g. "AL" or "Alabama") — enables the US Tile Map chart |
 
 **Auto-detection rules (in priority order):**
 1. Object/string column where ≥ 80% of values parse as dates → **Date**
-2. Boolean column → **Nominal**
-3. Object column where ≥ 80% of values coerce to numbers → Nominal/Ordinal/Interval based on cardinality
-4. Object column that doesn't coerce → **Nominal**
-5. Numeric column with > 50% unique values or > 20 distinct values → **Interval/Ratio**
-6. Numeric column matching a Likert-style integer scale (e.g. 1–5, 0–7) → **Ordinal**
-7. Numeric column with ≤ 15 unique values → **Ordinal**
-8. Everything else → **Interval/Ratio**
+2. Object/string column where ≥ 70% of values match US state abbreviations or full names → **Location**
+3. Boolean column → **Nominal**
+4. Object column where ≥ 80% of values coerce to numbers → Nominal/Ordinal/Interval based on cardinality
+5. Object column that doesn't coerce → **Nominal**
+6. Numeric column with > 50% unique values or > 20 distinct values → **Interval/Ratio**
+7. Numeric column matching a Likert-style integer scale (e.g. 1–5, 0–7) → **Ordinal**
+8. Numeric column with ≤ 15 unique values → **Ordinal**
+9. Everything else → **Interval/Ratio**
 
 The auto-detection is a heuristic — always override if the result looks wrong.
 
@@ -170,8 +172,8 @@ The **Variable:** picker in the Univariate tab lets you choose which selected va
 
 | Chart | Variable types | Description | Best for |
 |---|---|---|---|
-| **Donut Chart** | Nominal / Ordinal | Proportional wedges per category | Quick share-of-whole for categorical variables |
-| **Column Chart** | Nominal / Ordinal | Bar chart of value counts, sorted by count or value | Comparing category frequencies |
+| **Donut Chart** | Nominal / Ordinal / Location | Proportional wedges per category | Quick share-of-whole for categorical variables |
+| **Column Chart** | Nominal / Ordinal / Location | Bar chart of value counts, sorted by count or value | Comparing category frequencies |
 | **Box Plot** | Numeric / Date | Median, quartiles, and outliers; date axes auto-formatted | Quick distribution summary |
 | **Violin Plot** | Numeric / Date | Box plot + kernel density silhouette; date axes auto-formatted | Distribution shape comparison |
 | **Histogram** | Numeric / Date | Binned frequency counts (Freedman-Diaconis rule); date axes auto-formatted | Full distribution shape |
@@ -184,8 +186,8 @@ The **Variable:** picker in the Univariate tab lets you choose which selected va
 
 | Chart | X type | Y type | Notes |
 |---|---|---|---|
-| **Grouped Column Chart** | Categorical | Numeric or Categorical | Means (numeric Y) or grouped counts (categorical Y) |
-| **Stacked Column Chart** | Categorical | Numeric or Categorical | Supports 100% normalised stacking |
+| **Grouped Column Chart** | Categorical | Categorical | Side-by-side bars showing counts per X × Y combination |
+| **Stacked Column Chart** | Categorical | Categorical | Stacked bars of counts; supports 100% normalised stacking |
 | **Box Plot** | Categorical | Numeric | Distribution of Y per X category |
 | **Violin Plot** | Categorical | Numeric | Distribution shape of Y per X category |
 | **Treemap** | Categorical | Numeric | Proportional size comparison |
@@ -199,7 +201,7 @@ The **Variable:** picker in the Univariate tab lets you choose which selected va
 | **Stacked Area Chart** | Numeric or Date | Numeric | Cumulative trends over time |
 | **Faceted Histogram** | Numeric | Categorical | Distribution of X (numeric) in a separate panel per Y category |
 | **Faceted Column Chart** | Categorical | Categorical | Bar chart of X counts in a separate panel per Y category |
-| **Mosaic Plot** | Categorical | Categorical | Proportional area; Y-Axis categories share a consistent colour across all X categories |
+| **US Tile Map** | **Location** | Numeric | Choropleth-style grid map; each US state coloured by the aggregated Y value. Aggregation (Mean / Sum / Count / Median / Min / Max) is configurable via Quick Edit. |
 
 ### Multivariate (X + Y + Z required)
 
@@ -210,7 +212,7 @@ The **Variable:** picker in the Univariate tab lets you choose which selected va
 
 > **Scatter Plot Z-Axis colouring:** when Z-Axis is set, scatter points are coloured by that variable. Categorical Z → distinct colours + legend. Numeric Z → viridis gradient + colour bar.
 >
-> **Small Multiples:** facet sort order (Ascending / Descending / As-is), sub-chart type (Scatter / Line), shared axis ranges, and same-colour-across-panels are all configurable via **Quick Edit**.
+> **Small Multiples:** facet sort order (Ascending / Descending / As-is), sub-chart type (Scatter / Line), shared axis ranges, same-colour-across-panels, and (for Scatter) trend lines (Linear / LOWESS / Exponential) are all configurable via **Quick Edit**.
 
 ---
 
@@ -247,7 +249,7 @@ chartBuilder/
 ├── main.py                    # Entry point
 ├── core/                      # Pure Python — no GUI imports
 │   ├── data_loader.py         # CSV/XLSX/XLS loading
-│   ├── variable_classifier.py # Auto-classify columns (Nominal/Ordinal/Interval/Date)
+│   ├── variable_classifier.py # Auto-classify columns (Nominal/Ordinal/Interval/Date/Location)
 │   ├── transformer.py         # Per-variable transforms (log, lag, diff, %)
 │   ├── consolidator.py        # Value filter/recode logic
 │   ├── chart_config.py        # VariableSelection, ChartSpec dataclasses
@@ -258,7 +260,7 @@ chartBuilder/
 │   ├── base.py                # BaseChart abstract class
 │   ├── registry.py            # CHART_REGISTRY — only file to edit when adding a chart
 │   ├── univariate/            # 9 chart modules
-│   ├── bivariate/             # 9 chart modules (Box + Violin render bivariate from univariate/)
+│   ├── bivariate/             # 10 chart modules (Box + Violin render bivariate from univariate/)
 │   └── trivariate/            # 4 chart modules
 │
 └── ui/
@@ -278,16 +280,16 @@ chartBuilder/
 ```
 FilePanel.data_loaded(df, path)
   → MainWindow._on_data_loaded()
-      VariableClassifier.classify_all(df)          → auto-detected types
-      warn if len(df) > 100,000                     → yellow banner
+      VariableClassifier.classify_all(df)           → auto-detected types
+      warn if len(df) > 100,000                      → yellow banner
       VariablePanel.set_data(df, auto_types)
       ChartDashboard.clear()
 
-VariablePanel.selection_changed(VariableSelection)  ← 300 ms debounced
+VariablePanel.selection_changed(VariableSelection)   ← 300 ms debounced
   → MainWindow._on_selection_changed()
-      ResponseConsolidator.apply(df)               → filtered/recoded df
-      VariableTransformer.apply_all(df, transforms) → transformed df
-      ChartSelector.get_applicable_charts(sel)      → applicable chart lists
+      ResponseConsolidator.apply(df)                → filtered/recoded df
+      VariableTransformer.apply_all(df, transforms)  → transformed df
+      ChartSelector.get_applicable_charts(sel)       → applicable chart lists
       ChartDashboard.set_data(df_work, sel, applicable)
 ```
 
@@ -356,6 +358,8 @@ That's it. No other files need changing.
 | `self._apply_figure_style(fig, ax)` | Applies consistent spine colour, grid, and font styling |
 | `self._large_data_sample(df, limit)` | Returns `(df_sample, was_sampled)` — use for slow charts |
 | `self._add_sample_note(ax, n)` | Adds an annotation noting that a sample was used |
+| `self._to_mpl_numeric(series, vtype)` | Converts a series to plottable floats; DATE → matplotlib date numbers |
+| `self._apply_date_fmt(ax, which, fig)` | Sets AutoDateFormatter on x or y axis |
 
 ### VariableSelection fields
 

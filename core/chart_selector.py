@@ -13,7 +13,7 @@ Variable slots
 Tab activation
 --------------
   Univariate  : any variable selected
-  Bivariate   : has_x AND (has_y OR has_z)
+  Bivariate   : has_x AND has_y
   Trivariate  : has_x AND has_y AND has_z
 """
 
@@ -35,6 +35,10 @@ def _is_categorical(vtype: VariableType | None) -> bool:
 
 def _is_date(vtype: VariableType | None) -> bool:
     return vtype == VariableType.DATE
+
+
+def _is_location(vtype: VariableType | None) -> bool:
+    return vtype == VariableType.LOCATION
 
 
 # ── ChartSelector ─────────────────────────────────────────────────────────────
@@ -77,11 +81,12 @@ class ChartSelector:
         _any_selected    = len(all_selected) > 0
         _any_numeric     = any(_is_numeric(vt)      for _, vt in all_selected)
         _any_categorical = any(_is_categorical(vt)  for _, vt in all_selected)
+        _any_location    = any(_is_location(vt)     for _, vt in all_selected)
 
         if _any_selected:
             uni: list[ChartSpec] = []
-            # Donut & Column charts: counts per category — only for nominal/ordinal variables
-            if _any_categorical:
+            # Donut & Column charts: counts per category — for nominal, ordinal, or location
+            if _any_categorical or _any_location:
                 uni.append(ChartSpec("donut_chart",   "univariate", "Donut Chart"))
                 uni.append(ChartSpec("column_chart",  "univariate", "Column Chart"))
             if _any_numeric:
@@ -97,16 +102,16 @@ class ChartSelector:
             result["univariate"] = uni
 
         # ── Bivariate ─────────────────────────────────────────────────────────
-        # Activated when has_x AND has_y.
-        # • cat(x) + cat(y)     → Grouped/Stacked Column, Heatmap, Sankey, Mosaic,
+        # • cat(x)  + cat(y)     → Grouped/Stacked Column, Heatmap, Sankey, Mosaic,
         #                          Faceted Column Chart
-        # • cat(x) + num(y)     → Box, Violin, Treemap
-        # • num(x) + num(y)     → Scatter, Hexbin, Correlogram, Line, Stacked Area
-        # • any(x)  + cat(y)    → Faceted Histogram (num x) / Faceted Column Chart (cat x)
+        # • cat(x)  + num(y)     → Box, Violin, Treemap
+        # • num(x)  + num(y)     → Scatter, Hexbin, Correlogram, Line, Stacked Area
+        # • any(x)  + cat(y)     → Faceted Histogram (num x) / Faceted Column (cat x)
+        # • loc(x)  + num(y)     → US Tile Map
         biv: list[ChartSpec] = []
 
         if has_x and has_y:
-            if _is_categorical(x_t):
+            if _is_categorical(x_t) and _is_categorical(y_t):
                 biv.append(ChartSpec("grouped_column", "bivariate", "Grouped Column Chart"))
                 biv.append(ChartSpec("stacked_column", "bivariate", "Stacked Column Chart"))
 
@@ -129,13 +134,17 @@ class ChartSelector:
                 biv.append(ChartSpec("line_plot",    "bivariate", "Line Plot"))
                 biv.append(ChartSpec("stacked_area", "bivariate", "Stacked Area Chart"))
 
-            # Faceted chart: X (any type) faceted by Y (categorical)
-            if _is_categorical(y_t):
+            # Faceted chart: X (any non-location type) faceted by Y (categorical)
+            if _is_categorical(y_t) and not _is_location(x_t):
                 facet_name = (
                     "Faceted Column Chart" if _is_categorical(x_t)
                     else "Faceted Histogram"
                 )
                 biv.append(ChartSpec("faceted_histogram", "bivariate", facet_name))
+
+            # US Tile Map: location X + numeric Y
+            if _is_location(x_t) and _is_numeric(y_t):
+                biv.append(ChartSpec("tile_map", "bivariate", "US Tile Map"))
 
         if biv:
             result["bivariate"] = biv

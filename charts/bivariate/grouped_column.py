@@ -1,12 +1,17 @@
-"""Grouped column chart with optional error bars."""
+"""
+Grouped Column Chart — side-by-side bars for two categorical variables.
+
+Only shown for categorical × categorical pairs (both X and Y must be
+Nominal or Ordinal).  Bars represent counts per X × Y combination.
+"""
 from __future__ import annotations
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 
 from charts.base import BaseChart
 from core.chart_config import VariableSelection, ChartSpec
-from core.variable_classifier import VariableType
 from core.transformer import VariableTransformer
 from ui.palette import MPL_DEFAULT_PALETTE, PALETTE_CHOICES
 
@@ -22,13 +27,12 @@ class GroupedColumn(BaseChart):
 
     def _default_edit_options(self) -> dict:
         return {
-            "title":      {"label": "Title",        "type": "text",   "default": ""},
-            "x_label":    {"label": "X-axis label",  "type": "text",   "default": ""},
-            "y_label":    {"label": "Y-axis label",  "type": "text",   "default": "Count"},
-            "palette":    {"label": "Colour palette","type": "choice", "default": MPL_DEFAULT_PALETTE,
-                           "choices": PALETTE_CHOICES},
-            "error_bars": {"label": "Show error bars","type": "bool",  "default": False},
-            "rotate_x":   {"label": "Rotate X labels","type": "bool",  "default": False},
+            "title":    {"label": "Title",          "type": "text",   "default": ""},
+            "x_label":  {"label": "X-axis label",    "type": "text",   "default": ""},
+            "y_label":  {"label": "Y-axis label",    "type": "text",   "default": "Count"},
+            "palette":  {"label": "Colour palette",  "type": "choice", "default": MPL_DEFAULT_PALETTE,
+                         "choices": PALETTE_CHOICES},
+            "rotate_x": {"label": "Rotate X labels", "type": "bool",   "default": False},
         }
 
     def render(self, df: pd.DataFrame, selection: VariableSelection, fig: Figure) -> None:
@@ -37,57 +41,49 @@ class GroupedColumn(BaseChart):
 
         x_col = selection.x_var
         y_col = selection.y_var
-        df_work = df[[x_col, y_col]].dropna()
+        df_work = df[[x_col, y_col]].dropna().copy()
+        df_work[x_col] = df_work[x_col].astype(str)
+        df_work[y_col] = df_work[y_col].astype(str)
 
         if df_work.empty:
             ax.text(0.5, 0.5, "No data to display.", ha='center', va='center',
                     transform=ax.transAxes, color="#94A3B8")
             return
 
-        y_type    = selection.y_type()
-        y_numeric = pd.to_numeric(df_work[y_col], errors='coerce')
-        _use_numeric = (
-            y_type in (VariableType.INTERVAL, VariableType.DATE)
-            or (
-                y_type not in (VariableType.NOMINAL, VariableType.ORDINAL)
-                and y_numeric.notna().mean() >= 0.8
-            )
-        )
-        if _use_numeric:
-            # Numeric Y: plot mean per category
-            df_work = df_work.copy()
-            df_work[y_col] = y_numeric
-            grouped = df_work.groupby(x_col)[y_col]
-            means  = grouped.mean()
-            sems   = grouped.sem()
-            cats   = means.index.astype(str).tolist()
-            x_pos  = np.arange(len(cats))
-            palette = self._opt("palette") or MPL_DEFAULT_PALETTE
-            import matplotlib.pyplot as plt
-            colors = plt.cm.get_cmap(palette, len(cats)) if len(cats) > 1 else [self._opt("palette") or "#2563EB"]
-            try:
-                bar_colors = [colors(i / max(len(cats)-1, 1)) for i in range(len(cats))]
-            except TypeError:
-                bar_colors = [colors] * len(cats)
-            yerr = sems.values if self._opt("error_bars") else None
-            ax.bar(x_pos, means.values, color=bar_colors, width=0.65,
-                   yerr=yerr, capsize=4, error_kw={"ecolor": "#334155", "linewidth": 1},
-                   zorder=2)
-            ax.set_xticks(x_pos)
-            y_label = self._opt("y_label") or VariableTransformer.axis_label(y_col, selection.y_transform())
-        else:
-            # Categorical Y: count occurrences
-            counts = df_work.groupby(x_col)[y_col].value_counts().unstack(fill_value=0)
-            counts.plot(kind='bar', ax=ax, legend=True)
-            cats = counts.index.astype(str).tolist()
-            x_pos = np.arange(len(cats))
-            y_label = "Count"
+        # Pivot: rows = X categories, columns = Y categories, values = counts
+        counts = df_work.groupby(x_col)[y_col].value_counts().unstack(fill_value=0)
+        x_cats = counts.index.astype(str).tolist()
+        y_cats = counts.columns.astype(str).tolist()
+        n_x    = len(x_cats)
+        n_y    = len(y_cats)
 
-        ax.set_xticklabels(cats, rotation=(45 if self._opt("rotate_x") else 0),
-                           ha='right' if self._opt("rotate_x") else 'center')
+        palette = self._opt("palette") or MPL_DEFAULT_PALETTE
+        try:
+            cmap   = plt.cm.get_cmap(palette, max(n_y, 2))
+            colors = [cmap(i / max(n_y - 1, 1)) for i in range(n_y)]
+        except Exception:
+            colors = [f"C{i}" for i in range(n_y)]
+
+        bar_width = 0.8 / max(n_y, 1)
+        x_pos = np.arange(n_x)
+
+        for i, (y_cat, color) in enumerate(zip(y_cats, colors)):
+            offset = (i - n_y / 2 + 0.5) * bar_width
+            ax.bar(x_pos + offset, counts[y_cat].values,
+                   width=bar_width * 0.9, color=color, label=str(y_cat), zorder=2)
+
+        ax.set_xticks(x_pos)
+        rotate = bool(self._opt("rotate_x")) or n_x > 8
+        ax.set_xticklabels(x_cats,
+                           rotation=45 if rotate else 0,
+                           ha='right' if rotate else 'center')
+
+        ax.legend(title=y_col, fontsize=8, title_fontsize=9,
+                  loc='best', framealpha=0.85)
         x_label = self._opt("x_label") or VariableTransformer.axis_label(x_col, selection.x_transform())
         ax.set_xlabel(x_label)
-        ax.set_ylabel(self._opt("y_label") or y_label)
-        ax.set_title(self._opt("title") or f"{y_col} by {x_col}", fontsize=13, fontweight='bold', pad=10)
+        ax.set_ylabel(self._opt("y_label") or "Count")
+        ax.set_title(self._opt("title") or f"{y_col} by {x_col}",
+                     fontsize=13, fontweight='bold', pad=10)
         self._apply_figure_style(fig, ax)
         fig.tight_layout()

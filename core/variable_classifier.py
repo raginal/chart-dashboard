@@ -1,7 +1,7 @@
 """
 Variable type classifier for chartBuilder.
 
-Extends the crosstabs classifier by adding a DATE variable type.
+Extends the crosstabs classifier by adding DATE and LOCATION variable types.
 The analyst can always override the auto-detected type via the UI.
 """
 
@@ -15,28 +15,57 @@ class VariableType(Enum):
     ORDINAL  = "Ordinal"
     INTERVAL = "Interval/Ratio"
     DATE     = "Date"
+    LOCATION = "Location"
+
+
+# ── US geography reference sets ───────────────────────────────────────────────
+
+US_STATE_ABBREVS: frozenset[str] = frozenset({
+    'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+    'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+    'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+    'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+    'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC',
+})
+
+US_STATE_NAMES: frozenset[str] = frozenset({
+    'alabama', 'alaska', 'arizona', 'arkansas', 'california', 'colorado',
+    'connecticut', 'delaware', 'florida', 'georgia', 'hawaii', 'idaho',
+    'illinois', 'indiana', 'iowa', 'kansas', 'kentucky', 'louisiana',
+    'maine', 'maryland', 'massachusetts', 'michigan', 'minnesota',
+    'mississippi', 'missouri', 'montana', 'nebraska', 'nevada',
+    'new hampshire', 'new jersey', 'new mexico', 'new york',
+    'north carolina', 'north dakota', 'ohio', 'oklahoma', 'oregon',
+    'pennsylvania', 'rhode island', 'south carolina', 'south dakota',
+    'tennessee', 'texas', 'utah', 'vermont', 'virginia', 'washington',
+    'west virginia', 'wisconsin', 'wyoming', 'district of columbia',
+})
 
 
 class VariableClassifier:
     """
-    Auto-detects whether each column is Nominal, Ordinal, Interval/Ratio, or Date.
+    Auto-detects whether each column is Nominal, Ordinal, Interval/Ratio, Date,
+    or Location.
 
     Heuristic priority:
       1. Object/string column where ≥80% of values parse as dates → Date
-      2. Boolean → Nominal
-      3. Non-numeric (object/category) →
+      2. Object/string column where ≥70% of values are US state abbreviations
+         or full state names → Location
+      3. Boolean → Nominal
+      4. Non-numeric (object/category) →
            a. Try coerce to numeric; if ≥80% succeed → Interval/Ordinal by cardinality
            b. Otherwise → Nominal
-      4. Numeric with high cardinality (>50% unique or >20 distinct) → Interval
-      5. Numeric matching a Likert-style integer scale (e.g. 1–5, 0–7) → Ordinal
-      6. Numeric with ≤15 unique values → Ordinal (conservative default)
-      7. Everything else → Interval
+      5. Numeric with high cardinality (>50% unique or >20 distinct) → Interval
+      6. Numeric matching a Likert-style integer scale (e.g. 1–5, 0–7) → Ordinal
+      7. Numeric with ≤15 unique values → Ordinal (conservative default)
+      8. Everything else → Interval
     """
 
     ORDINAL_MAX_UNIQUE         = 15
     INTERVAL_CARDINALITY_RATIO = 0.5
     DATE_PARSE_MIN_FRAC        = 0.80   # fraction of non-null values that must parse as dates
     NUMERIC_COERCE_MIN_FRAC    = 0.80   # fraction that must coerce for numeric treatment
+    LOCATION_MIN_FRAC          = 0.70   # fraction of values that must match US state names/abbrevs
 
     # ── Static helpers ────────────────────────────────────────────────────────
 
@@ -82,11 +111,23 @@ class VariableClassifier:
             if date_frac >= self.DATE_PARSE_MIN_FRAC:
                 return VariableType.DATE
 
-        # 2. Boolean
+        # 2. Location check — US state abbreviations or full state names
+        if series.dtype == object or str(series.dtype) == 'category':
+            upper_vals = clean.astype(str).str.strip().str.upper()
+            abbrev_frac = upper_vals.isin(US_STATE_ABBREVS).mean()
+            if abbrev_frac >= self.LOCATION_MIN_FRAC:
+                return VariableType.LOCATION
+
+            lower_vals = clean.astype(str).str.strip().str.lower()
+            name_frac = lower_vals.isin(US_STATE_NAMES).mean()
+            if name_frac >= self.LOCATION_MIN_FRAC:
+                return VariableType.LOCATION
+
+        # 3. Boolean
         if series.dtype == bool or str(series.dtype) == 'boolean':
             return VariableType.NOMINAL
 
-        # 3. Non-numeric (object/category)
+        # 4. Non-numeric (object/category)
         if series.dtype == object or str(series.dtype) == 'category':
             coerced = VariableClassifier.coerce_interval_series(clean)
             valid_frac = coerced.notna().mean()
@@ -102,11 +143,11 @@ class VariableClassifier:
                 return VariableType.INTERVAL
             return VariableType.NOMINAL
 
-        # 4. Datetime dtype
+        # 5. Datetime dtype
         if pd.api.types.is_datetime64_any_dtype(series):
             return VariableType.DATE
 
-        # 5. Numeric
+        # 6. Numeric
         if pd.api.types.is_numeric_dtype(series):
             n_unique = clean.nunique()
             n = len(clean)

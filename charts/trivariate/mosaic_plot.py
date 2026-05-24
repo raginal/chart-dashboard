@@ -91,7 +91,7 @@ class MosaicPlot(BaseChart):
                 return ""
             parts: list[str] = []
             if show_counts:
-                parts.append(f"n={n}")
+                parts.append(f"{n:,}")
             if show_pct and total > 0:
                 parts.append(f"{n / total * 100:.0f}%")
             return "\n".join(parts)

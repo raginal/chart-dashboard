@@ -98,7 +98,7 @@ class DonutChart(BaseChart):
             if show_pct:
                 parts.append(f"{pct:.1f}%")
             if show_count:
-                parts.append(f"n={int(round(pct * total / 100))}")
+                parts.append(f"{int(round(pct * total / 100)):,}")
             return "\n".join(parts) if parts else ""
 
         # ── Draw ──────────────────────────────────────────────────────────────
@@ -124,7 +124,7 @@ class DonutChart(BaseChart):
         )
 
         # Centre label showing total N
-        ax.text(0, 0, f"n={total:,}", ha='center', va='center',
+        ax.text(0, 0, f"{total:,}", ha='center', va='center',
                 fontsize=11, fontweight='600', color="#334155")
 
         self._apply_figure_style(fig, ax)

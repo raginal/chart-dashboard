@@ -31,6 +31,7 @@ from charts.bivariate.correlogram      import Correlogram
 from charts.bivariate.line_plot        import LinePlot
 from charts.bivariate.treemap          import Treemap
 from charts.bivariate.stacked_area     import StackedArea
+from charts.bivariate.tile_map         import TileMap
 
 # ── Trivariate ────────────────────────────────────────────────────────────────
 from charts.trivariate.sankey          import Sankey
@@ -47,6 +48,7 @@ _ALL_CHART_CLASSES: list[type[BaseChart]] = [
     # Bivariate
     FacetedHistogram,
     GroupedColumn, StackedColumn, ScatterPlot, Hexbin, Correlogram, LinePlot, Treemap, StackedArea,
+    TileMap,
     # Trivariate
     Sankey, MosaicPlot, SmallMultiples, Heatmap,
 ]

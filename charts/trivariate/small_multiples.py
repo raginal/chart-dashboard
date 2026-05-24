@@ -4,7 +4,8 @@ Small Multiples — faceted grid of scatter or line sub-charts.
 Lives in the **trivariate** tab (requires X + Y + Z-Axis).
 
 The Z-Axis variable is the facet variable.  Each panel shows X vs Y for one
-value of Z.  Facet sort order is configurable via Edit…
+value of Z.  Facet sort order, sub-chart type, shared axes, colour palette,
+and (for Scatter) trend lines are all configurable via Quick Edit.
 """
 from __future__ import annotations
 import numpy as np
@@ -16,7 +17,7 @@ from charts.base import BaseChart
 from core.chart_config import VariableSelection, ChartSpec
 from core.variable_classifier import VariableType
 from core.transformer import VariableTransformer
-from ui.palette import MPL_ACCENT, MPL_DEFAULT_PALETTE, PALETTE_CHOICES
+from ui.palette import MPL_ACCENT, MPL_TREND, MPL_DEFAULT_PALETTE, PALETTE_CHOICES
 
 MAX_FACETS = 16
 
@@ -32,16 +33,20 @@ class SmallMultiples(BaseChart):
 
     def _default_edit_options(self) -> dict:
         return {
-            "title":       {"label": "Title",                    "type": "text",   "default": ""},
-            "chart_type":  {"label": "Sub-chart type",           "type": "choice", "default": "Scatter",
+            "title":       {"label": "Title",                     "type": "text",   "default": ""},
+            "chart_type":  {"label": "Sub-chart type",            "type": "choice", "default": "Scatter",
                             "choices": ["Scatter", "Line"]},
-            "palette":     {"label": "Colour palette",           "type": "choice", "default": MPL_DEFAULT_PALETTE,
+            "palette":     {"label": "Colour palette",            "type": "choice", "default": MPL_DEFAULT_PALETTE,
                             "choices": PALETTE_CHOICES},
-            "same_color":  {"label": "Same colour across panels","type": "bool",   "default": True},
-            "shared_axes": {"label": "Shared axis ranges",       "type": "bool",   "default": True},
-            "ncols":       {"label": "Columns",                  "type": "text",   "default": "3"},
-            "sort_order":  {"label": "Facet order",              "type": "choice", "default": "Ascending",
+            "same_color":  {"label": "Same colour across panels", "type": "bool",   "default": True},
+            "shared_axes": {"label": "Shared axis ranges",        "type": "bool",   "default": True},
+            "ncols":       {"label": "Columns",                   "type": "text",   "default": "3"},
+            "sort_order":  {"label": "Facet order",               "type": "choice", "default": "Ascending",
                             "choices": ["Ascending", "Descending", "As-is"]},
+            # Scatter-only options
+            "trend_line":  {"label": "Trend line (Scatter)",      "type": "choice", "default": "None",
+                            "choices": ["None", "Linear", "LOWESS", "Exponential"]},
+            "trend_color": {"label": "Trend line colour",         "type": "text",   "default": MPL_TREND},
         }
 
     def render(self, df: pd.DataFrame, selection: VariableSelection, fig: Figure) -> None:
@@ -66,7 +71,7 @@ class SmallMultiples(BaseChart):
                     ha='center', va='center', transform=ax.transAxes, color="#94A3B8")
             return
 
-        # Sort facets
+        # ── Sort facets ───────────────────────────────────────────────────────
         sort_order = self._opt("sort_order") or "Ascending"
         raw_facets = sub[fac_col].unique().tolist()
         if sort_order == "Ascending":
@@ -90,16 +95,15 @@ class SmallMultiples(BaseChart):
         except (TypeError, ValueError):
             ncols = 3
 
-        nrows = int(np.ceil(len(facets) / ncols))
+        nrows      = int(np.ceil(len(facets) / ncols))
         chart_type = self._opt("chart_type") or "Scatter"
 
-        palette = self._opt("palette") or MPL_DEFAULT_PALETTE
+        palette   = self._opt("palette") or MPL_DEFAULT_PALETTE
         same_color = self._opt("same_color")
         same_color = True if same_color is None else bool(same_color)
         try:
             cmap = plt.cm.get_cmap(palette, max(len(facets), 2))
             if same_color:
-                # All panels share the first palette colour
                 colors = [cmap(0.0)] * len(facets)
             else:
                 colors = [cmap(i / max(len(facets) - 1, 1)) for i in range(len(facets))]
@@ -114,6 +118,9 @@ class SmallMultiples(BaseChart):
         x_type = selection.x_type()
         y_type = selection.y_type()
 
+        trend       = self._opt("trend_line") or "None"
+        trend_color = self._opt("trend_color") or MPL_TREND
+
         for idx, (facet, color) in enumerate(zip(facets, colors)):
             row, col = divmod(idx, ncols)
             ax = axes[row][col]
@@ -124,6 +131,12 @@ class SmallMultiples(BaseChart):
             if chart_type == "Scatter":
                 valid = xs.notna() & ys.notna()
                 ax.scatter(xs[valid], ys[valid], color=color, alpha=0.6, s=14, linewidths=0)
+
+                # ── Per-panel trend line ──────────────────────────────────────
+                if trend != "None":
+                    xv = xs[valid].values.astype(float)
+                    yv = ys[valid].values.astype(float)
+                    self._draw_trend(ax, xv, yv, trend, trend_color)
 
             elif chart_type == "Line":
                 valid = xs.notna() & ys.notna()
@@ -136,7 +149,7 @@ class SmallMultiples(BaseChart):
             ax.spines["right"].set_visible(False)
             ax.tick_params(labelsize=8)
 
-        # Apply date formatters to shared axes (setting on any one panel propagates)
+        # Apply date formatters to shared axes
         if len(facets) > 0:
             ref_ax = axes[0][0]
             if x_type == VariableType.DATE:
@@ -158,3 +171,46 @@ class SmallMultiples(BaseChart):
         fig.supxlabel(x_label, fontsize=10, y=0.01)
         fig.supylabel(y_label, fontsize=10, x=0.0)
         fig.patch.set_facecolor("white")
+
+    # ── Trend line helper ──────────────────────────────────────────────────────
+
+    def _draw_trend(self, ax, xv: np.ndarray, yv: np.ndarray,
+                    trend: str, color: str) -> None:
+        """Draw a trend line onto *ax*.  Silently skips if data is insufficient."""
+        if len(xv) < 3:
+            return
+        try:
+            if trend == "Linear":
+                from scipy import stats
+                slope, intercept, r, p, _ = stats.linregress(xv, yv)
+                xs_fit = np.linspace(xv.min(), xv.max(), 200)
+                ax.plot(xs_fit, slope * xs_fit + intercept,
+                        color=color, linewidth=1.4,
+                        label=f"r={r:.2f}", zorder=4)
+                ax.legend(fontsize=7, framealpha=0.8)
+
+            elif trend == "LOWESS":
+                from statsmodels.nonparametric.smoothers_lowess import lowess
+                smoothed = lowess(yv, xv, frac=0.4)
+                smoothed_s = smoothed[np.argsort(smoothed[:, 0])]
+                ax.plot(smoothed_s[:, 0], smoothed_s[:, 1],
+                        color=color, linewidth=1.4,
+                        label="LOWESS", zorder=4)
+                ax.legend(fontsize=7, framealpha=0.8)
+
+            elif trend == "Exponential":
+                from scipy.optimize import curve_fit
+                x_shift    = xv.min()
+                xs_shifted = xv - x_shift
+                if (yv > 0).all():
+                    def _exp_func(x, a, b):
+                        return a * np.exp(b * x)
+                    popt, _ = curve_fit(_exp_func, xs_shifted, yv,
+                                        p0=[yv.mean(), 0.0], maxfev=5000)
+                    xs_fit = np.linspace(xs_shifted.min(), xs_shifted.max(), 200)
+                    ax.plot(xs_fit + x_shift, _exp_func(xs_fit, *popt),
+                            color=color, linewidth=1.4,
+                            label="Exp", zorder=4)
+                    ax.legend(fontsize=7, framealpha=0.8)
+        except Exception:
+            pass   # silently skip if trend cannot be computed for this panel
