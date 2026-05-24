@@ -127,7 +127,15 @@ class ViolinPlot(BaseChart):
                 ax.scatter([positions[i]], [med], color="white", s=12, zorder=5)
 
         ax.set_xticks(positions)
-        ax.set_xticklabels(labels, rotation=45, ha='right', fontsize=9)
+        n        = len(labels)
+        max_len  = max((len(str(l)) for l in labels), default=0)
+        rotate   = n > 6 or max_len > 8
+        ax.set_xticklabels(
+            labels,
+            rotation=45 if rotate else 0,
+            ha='right' if rotate else 'center',
+            fontsize=max(6, 9 - max(n - 8, 0) // 3),
+        )
         ax.set_xlabel(self._opt("x_label") or x_col)
         ax.set_ylabel(VariableTransformer.axis_label(y_col, selection.y_transform()))
         ax.set_title(self._opt("title") or f"{y_col} by {x_col}",
