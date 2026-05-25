@@ -76,12 +76,19 @@ class LinePlot(BaseChart):
             xs = means.index
             ax.plot(xs, means.values, color=color, linewidth=2, marker=marker,
                     markersize=5, label=y_col if z_is_line else None)
-            ax.fill_between(
-                xs,
-                means.values - 1.96 * sems.values,
-                means.values + 1.96 * sems.values,
-                color=MPL_CONFIDENCE_BAND, alpha=0.5, label="95% CI",
-            )
+            # If most groups have only one observation (typical time series),
+            # SEM is 0 everywhere and the band would be invisible.  Fall back
+            # to a rolling-window std so the band always shows meaningful spread.
+            if (sems == 0).mean() > 0.5:
+                window   = max(3, len(means) // 15)
+                roll_std = means.rolling(window, center=True, min_periods=1).std(ddof=1).fillna(0)
+                lo = (means - 1.96 * roll_std).values
+                hi = (means + 1.96 * roll_std).values
+            else:
+                lo = means.values - 1.96 * sems.values
+                hi = means.values + 1.96 * sems.values
+            ax.fill_between(xs, lo, hi,
+                            color=MPL_CONFIDENCE_BAND, alpha=0.5, label="95% CI")
             ax.legend(fontsize=9, framealpha=0.8)
         else:
             ax.plot(sub[x_col], sub[y_col], color=color, linewidth=2,
@@ -92,8 +99,7 @@ class LinePlot(BaseChart):
         if z_is_line:
             sub_z = sub.dropna(subset=[z_col])
             ax.plot(sub_z[x_col], sub_z[z_col], color=z_color, linewidth=2,
-                    marker=marker, markersize=5, alpha=0.85, label=z_col,
-                    linestyle='--')
+                    marker=marker, markersize=5, alpha=0.85, label=z_col)
             ax.legend(fontsize=9, framealpha=0.8, loc='best')
 
         if x_type == VariableType.DATE:

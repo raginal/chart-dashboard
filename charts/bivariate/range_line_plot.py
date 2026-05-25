@@ -2,32 +2,43 @@
 Range Line Plot — seasonal context chart for Date × Numeric pairs.
 
 Inspired by EIA-style inventory ribbon charts.  The chart splits the data into
-two periods:
+two periods using **calendar-aligned** boundaries:
 
-• **Historical period** (non-current) — grouped by calendar position
-  (week-of-year, day-of-year, or day-of-month depending on the chosen range
-  mode) to compute a min–max ribbon and an optional average line.
+• **Historical period** — grouped by calendar position to compute a
+  min–max ribbon and an optional average line.
 
-• **Current period** — the most-recent slice of the data, plotted as a
-  long-dashed line over the same x-axis (actual dates).
+• **Current period** — the most-recent slice, plotted as a long-dashed
+  line over the same x-axis.
+
+The x-axis always extends to the **end of the current period unit**, even
+if data has not yet reached that date, so you always see the full year/
+month window.
 
 Range modes
 -----------
-  "5 Years"  (default) — current = last 365 days; historical = 4 prior years.
-                         Calendar key = ISO week-of-year.
-  "10 Years"           — current = last 365 days; historical = 9 prior years.
-                         Calendar key = ISO week-of-year.
-  "1 Year"             — current = last 31 days; historical = prior 11 months.
-                         Calendar key = day-of-year.
-  "1 Month"            — current = last 1 day;  historical = prior 30 days.
-                         Calendar key = day-of-month.
+  "5 Years"  (default) — current = current calendar year;
+                          historical = 5 prior calendar years.
+                          Calendar key = ISO week-of-year.
+                          X-axis: Jan 1 – Dec 31 of current year.
 
-The x-axis always shows **actual dates** for the current period; the range
-ribbon is projected onto those dates using their calendar key.
+  "10 Years"           — same structure, 10 prior calendar years.
+
+  "1 Year"             — current = current calendar month;
+                          historical = 12 prior calendar months.
+                          Calendar key = day-of-month.
+                          X-axis: 1st – last day of current month.
+
+  "1 Month"            — current = current calendar month;
+                          historical = 3 prior calendar months
+                          (giving ≥ 3 values per day-of-month for a
+                          meaningful ribbon).
+                          Calendar key = day-of-month.
+                          X-axis: 1st – last day of current month.
 """
 from __future__ import annotations
-import pandas as pd
+import calendar as _cal
 import numpy as np
+import pandas as pd
 from matplotlib.figure import Figure
 
 from charts.base import BaseChart
@@ -64,56 +75,54 @@ class RangeLinePlot(BaseChart):
         "5 Years":  "5-yr Range",
         "10 Years": "10-yr Range",
         "1 Year":   "1-yr Range",
-        "1 Month":  "1-mo Range",
+        "1 Month":  "3-mo Range",
     }
     _CURRENT_LABELS: dict[str, str] = {
         "5 Years":  "Current Year",
         "10 Years": "Current Year",
         "1 Year":   "Current Month",
-        "1 Month":  "Current Day",
+        "1 Month":  "Current Month",
     }
 
     def _period_boundaries(
-        self, end: "pd.Timestamp", period: str
-    ) -> tuple["pd.Timestamp", "pd.Timestamp", str]:
+        self, end: pd.Timestamp, period: str
+    ) -> tuple[pd.Timestamp, pd.Timestamp, pd.Timestamp, str]:
         """
-        Return (current_start, hist_start, group_key) for the chosen period.
+        Return (current_start, hist_start, x_axis_end, group_key).
 
-        group_key is one of: "weekofyear" | "dayofyear" | "day"
+        All boundaries are **calendar-aligned** so the x-axis always
+        represents a complete period unit (full year or full month).
+
+        group_key: "weekofyear" | "dayofmonth"
         """
-        if period == "5 Years":
-            return (
-                end - pd.DateOffset(years=1),
-                end - pd.DateOffset(years=5),
-                "weekofyear",
-            )
-        if period == "10 Years":
-            return (
-                end - pd.DateOffset(years=1),
-                end - pd.DateOffset(years=10),
-                "weekofyear",
-            )
+        if period in ("5 Years", "10 Years"):
+            n             = 5 if period == "5 Years" else 10
+            yr            = end.year
+            current_start = pd.Timestamp(yr, 1, 1)
+            hist_start    = pd.Timestamp(yr - n, 1, 1)
+            x_axis_end    = pd.Timestamp(yr, 12, 31)
+            return current_start, hist_start, x_axis_end, "weekofyear"
+
+        # "1 Year" and "1 Month" — calendar-month unit
+        yr, mo        = end.year, end.month
+        current_start = pd.Timestamp(yr, mo, 1)
+        last_day      = _cal.monthrange(yr, mo)[1]
+        x_axis_end    = pd.Timestamp(yr, mo, last_day)
+
         if period == "1 Year":
-            return (
-                end - pd.DateOffset(days=31),
-                end - pd.DateOffset(years=1),
-                "dayofyear",
-            )
-        # "1 Month"
-        return (
-            end - pd.DateOffset(days=1),
-            end - pd.DateOffset(months=1),
-            "day",
-        )
+            hist_start = current_start - pd.DateOffset(years=1)
+        else:  # "1 Month" — use 3 prior months for a real min-max spread
+            hist_start = current_start - pd.DateOffset(months=3)
+
+        return current_start, hist_start, x_axis_end, "dayofmonth"
 
     @staticmethod
-    def _calendar_key(dates: "pd.Series", group_key: str) -> "pd.Series":
+    def _calendar_key(dates: pd.Series, group_key: str) -> pd.Series:
         """Map a datetime Series to integer calendar-position keys."""
         if group_key == "weekofyear":
             return dates.dt.isocalendar().week.astype(int)
-        if group_key == "dayofyear":
-            return dates.dt.dayofyear
-        return dates.dt.day  # day-of-month
+        # "dayofmonth"
+        return dates.dt.day
 
     # ── Render ────────────────────────────────────────────────────────────────
 
@@ -135,10 +144,12 @@ class RangeLinePlot(BaseChart):
                     ha="center", va="center", transform=ax.transAxes, color="#94A3B8")
             return
 
-        # ── Period split ──────────────────────────────────────────────────────
+        # ── Calendar-aligned period split ─────────────────────────────────────
         period = self._opt("period") or "5 Years"
         end_date = sub[x_col].max()
-        current_start, hist_start, group_key = self._period_boundaries(end_date, period)
+        current_start, hist_start, x_axis_end, group_key = self._period_boundaries(
+            end_date, period
+        )
 
         current    = sub[sub[x_col] >= current_start].copy()
         historical = sub[
@@ -162,20 +173,24 @@ class RangeLinePlot(BaseChart):
             return
 
         # ── Aggregate historical by calendar position ─────────────────────────
-        hist_keys = self._calendar_key(historical[x_col], group_key)
+        hist_keys  = self._calendar_key(historical[x_col], group_key)
         hist_stats = (
             historical.assign(_key=hist_keys)
             .groupby("_key")[y_col]
             .agg(["min", "max", "mean"])
         )
 
-        # ── Map ribbon to current dates ───────────────────────────────────────
-        cur_keys  = self._calendar_key(current[x_col], group_key)
-        band_min  = cur_keys.map(hist_stats["min"]).values
-        band_max  = cur_keys.map(hist_stats["max"]).values
-        band_mean = cur_keys.map(hist_stats["mean"]).values
-        x_dates   = current[x_col].values   # numpy datetime64 — matplotlib handles natively
-        y_vals    = current[y_col].values
+        # ── Build a full-period date range for the ribbon ─────────────────────
+        # This extends the ribbon across the ENTIRE current period unit (e.g.
+        # all 52 weeks of the year) even where current-period data doesn't
+        # exist yet.
+        ribbon_freq   = "7D" if group_key == "weekofyear" else "D"
+        ribbon_dates  = pd.date_range(current_start, x_axis_end, freq=ribbon_freq)
+        ribbon_keys   = self._calendar_key(pd.Series(ribbon_dates), group_key)
+        band_min      = ribbon_keys.map(hist_stats["min"]).values.astype(float)
+        band_max      = ribbon_keys.map(hist_stats["max"]).values.astype(float)
+        band_mean     = ribbon_keys.map(hist_stats["mean"]).values.astype(float)
+        ribbon_x      = ribbon_dates.values   # numpy datetime64
 
         # ── Draw range ribbon ─────────────────────────────────────────────────
         range_color   = self._opt("range_color")   or "#CBD5E1"
@@ -186,7 +201,7 @@ class RangeLinePlot(BaseChart):
         valid = ~(np.isnan(band_min) | np.isnan(band_max))
         if valid.any():
             ax.fill_between(
-                x_dates,
+                ribbon_x,
                 np.where(valid, band_min, np.nan),
                 np.where(valid, band_max, np.nan),
                 alpha=0.45,
@@ -200,7 +215,7 @@ class RangeLinePlot(BaseChart):
             valid_mean = ~np.isnan(band_mean)
             if valid_mean.any():
                 ax.plot(
-                    x_dates,
+                    ribbon_x,
                     np.where(valid_mean, band_mean, np.nan),
                     color="#64748B",
                     linewidth=1.4,
@@ -209,16 +224,19 @@ class RangeLinePlot(BaseChart):
                     zorder=3,
                 )
 
-        # ── Current period line (long-dashed) ─────────────────────────────────
+        # ── Current period line (long-dashed, actual data only) ───────────────
         ax.plot(
-            x_dates,
-            y_vals,
+            current[x_col].values,
+            current[y_col].values,
             color=current_color,
             linewidth=2,
             linestyle=(0, (8, 4)),   # long-dash pattern
             label=current_label,
             zorder=4,
         )
+
+        # ── Force x-axis to span the full current period unit ─────────────────
+        ax.set_xlim(pd.Timestamp(current_start), pd.Timestamp(x_axis_end))
 
         # ── Date axis, legend, labels ─────────────────────────────────────────
         self._apply_date_fmt(ax, "x", fig)
