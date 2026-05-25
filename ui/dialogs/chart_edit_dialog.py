@@ -119,10 +119,12 @@ class ChartEditDialog(QDialog):
                 grid.setRowMinimumHeight(grid_row, self._SEP_PADDING)
                 grid_row += 1
                 # Separator spanning both columns
+                # objectName="sep" lets the app stylesheet (light & dark)
+                # set the line colour via QFrame#sep { color: ... }.
                 sep = QFrame()
                 sep.setFrameShape(QFrame.Shape.HLine)
                 sep.setFrameShadow(QFrame.Shadow.Plain)
-                sep.setStyleSheet("QFrame { color: #E2E8F0; }")
+                sep.setObjectName("sep")
                 grid.addWidget(sep, grid_row, 0, 1, 2)
                 grid_row += 1
                 # Padding row below separator
@@ -149,6 +151,7 @@ class ChartEditDialog(QDialog):
         btn_sep = QFrame()
         btn_sep.setFrameShape(QFrame.Shape.HLine)
         btn_sep.setFrameShadow(QFrame.Shadow.Plain)
+        btn_sep.setObjectName("sep")
         outer.addWidget(btn_sep)
         outer.addSpacing(6)
 
