@@ -39,6 +39,7 @@ from charts.trivariate.mosaic_plot     import MosaicPlot
 from charts.trivariate.small_multiples import SmallMultiples
 from charts.trivariate.heatmap         import Heatmap
 from charts.trivariate.stacked_area    import StackedArea
+from charts.trivariate.slope_graph     import SlopeGraph
 
 
 # All registered chart classes — one entry per chart type
@@ -51,7 +52,7 @@ _ALL_CHART_CLASSES: list[type[BaseChart]] = [
     GroupedColumn, StackedColumn, ScatterPlot, Hexbin, Correlogram, LinePlot, RangeLinePlot,
     Treemap, TileMap,
     # Trivariate
-    Sankey, MosaicPlot, SmallMultiples, Heatmap, StackedArea,
+    Sankey, MosaicPlot, SmallMultiples, Heatmap, StackedArea, SlopeGraph,
 ]
 
 CHART_REGISTRY: dict[str, type[BaseChart]] = {

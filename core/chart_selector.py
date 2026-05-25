@@ -216,6 +216,10 @@ class ChartSelector:
             if _is_numeric(x_t) and _is_numeric(y_t) and _is_numeric(z_t):
                 triv.append(ChartSpec("line_plot", "trivariate", "Line Plot"))
 
+            # ── date × numeric × cat-like → Slope Graph ───────────────────────
+            if _is_date(x_t) and _is_numeric(y_t) and _is_cat_like(z_t):
+                triv.append(ChartSpec("slope_graph", "trivariate", "Slope Graph"))
+
             if triv:
                 result["trivariate"] = triv
 
