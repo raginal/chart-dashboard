@@ -283,8 +283,19 @@ class RangeLinePlot(BaseChart):
             zorder=4,
         )
 
-        # ── Force x-axis to span the full current year ───────────────────────
-        ax.set_xlim(pd.Timestamp(current_start), pd.Timestamp(x_axis_end))
+        # ── Set x-axis limits so tick marks span edge-to-edge ────────────────
+        # Add ±half-interval margins so the first (Jan) and last tick sit
+        # near the chart edges rather than leaving a blank gap on the right.
+        #   quarterly: ticks Jan/Apr/Jul/Oct,  interval ≈ 91 d, half ≈ 46 d
+        #   all others: monthly ticks Jan…Dec, interval ≈ 30 d, half ≈ 15 d
+        yr = current_start.year
+        if data_freq == "quarterly":
+            last_tick = pd.Timestamp(yr, 10, 1)   # Q4 start
+            half      = pd.Timedelta(days=46)
+        else:  # daily / weekly / monthly  →  monthly major ticks, last = Dec
+            last_tick = pd.Timestamp(yr, 12, 1)
+            half      = pd.Timedelta(days=16)
+        ax.set_xlim(pd.Timestamp(yr, 1, 1) - half, last_tick + half)
 
         # ── Data-cadence-aware axis labels ────────────────────────────────────
         self._apply_range_axis_fmt(ax, data_freq, fig)
