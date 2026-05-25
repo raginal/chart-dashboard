@@ -38,15 +38,15 @@ class SmallMultiples(BaseChart):
                             "choices": ["Scatter", "Line"]},
             "palette":     {"label": "Colour palette",            "type": "choice", "default": MPL_DEFAULT_PALETTE,
                             "choices": PALETTE_CHOICES},
-            "same_color":  {"label": "Same colour across panels", "type": "bool",   "default": True},
+            "same_color":  {"label": "Same colour",               "type": "bool",   "default": True},
             "shared_axes": {"label": "Shared axis ranges",        "type": "bool",   "default": True},
             "ncols":       {"label": "Columns",                   "type": "text",   "default": "3"},
             "sort_order":  {"label": "Facet order",               "type": "choice", "default": "Ascending",
                             "choices": ["Ascending", "Descending", "As-is"]},
-            # Scatter-only options
-            "trend_line":  {"label": "Trend line (Scatter)",      "type": "choice", "default": "None",
+            # Scatter-only options (hidden automatically when chart_type == "Line")
+            "trend_line":  {"label": "Trend line",   "type": "choice", "default": "None",
                             "choices": ["None", "Linear", "LOWESS", "Exponential"]},
-            "trend_color": {"label": "Trend line colour",         "type": "text",   "default": MPL_TREND},
+            "trend_color": {"label": "Trend colour", "type": "text",   "default": MPL_TREND},
             **BaseChart._title_style_options(),
         }
 
@@ -179,6 +179,11 @@ class SmallMultiples(BaseChart):
         fig.supxlabel(x_label, fontsize=10, y=0.01)
         fig.supylabel(y_label, fontsize=10, x=0.0)
         fig.patch.set_facecolor("white")
+
+        # ── Edit dialog visibility ────────────────────────────────────────────
+        is_scatter = chart_type == "Scatter"
+        self._set_visible("trend_line",  is_scatter)
+        self._set_visible("trend_color", is_scatter)
 
     # ── Trend line helper ──────────────────────────────────────────────────────
 

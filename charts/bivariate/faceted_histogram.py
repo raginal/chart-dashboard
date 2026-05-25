@@ -36,11 +36,11 @@ class FacetedHistogram(BaseChart):
     def _default_edit_options(self) -> dict:
         return {
             "title":      {"label": "Title",                      "type": "text",   "default": ""},
-            "color":      {"label": "Bar colour (Histogram)",     "type": "text",   "default": MPL_ACCENT},
-            "palette":    {"label": "Bar palette (Column Chart)", "type": "choice", "default": MPL_DEFAULT_PALETTE,
+            "color":      {"label": "Bar colour",    "type": "text",   "default": MPL_ACCENT},
+            "palette":    {"label": "Colour palette", "type": "choice", "default": MPL_DEFAULT_PALETTE,
                            "choices": PALETTE_CHOICES},
-            "ncols":      {"label": "Columns",                    "type": "text",   "default": "3"},
-            "num_bins":   {"label": "Bins (numeric X)",           "type": "text",   "default": "10"},
+            "ncols":      {"label": "Columns",        "type": "text",   "default": "3"},
+            "num_bins":   {"label": "Bins",           "type": "text",   "default": "10"},
             "sort_order": {"label": "Facet order",                "type": "choice", "default": "Ascending",
                            "choices": ["Ascending", "Descending", "As-is"]},
             "shared_x":   {"label": "Shared X range",             "type": "bool",   "default": True},
@@ -190,6 +190,12 @@ class FacetedHistogram(BaseChart):
         if is_numeric and shared_x and bin_edges is not None:
             for ax in visible_axes:
                 ax.set_xlim(bin_edges[0], bin_edges[-1])
+
+        # ── Edit dialog visibility ────────────────────────────────────────────
+        self._set_visible("color",    is_numeric)
+        self._set_visible("num_bins", is_numeric)
+        self._set_visible("palette",  not is_numeric)
+        self._set_visible("shared_x", is_numeric)
 
         x_label = VariableTransformer.axis_label(x_col, selection.x_transform())
         y_col   = selection.y_var

@@ -29,14 +29,13 @@ class ScatterPlot(BaseChart):
             "title":       {"label": "Title",               "type": "text",   "default": ""},
             "x_label":     {"label": "X-axis label",         "type": "text",   "default": ""},
             "y_label":     {"label": "Y-axis label",         "type": "text",   "default": ""},
-            "color":       {"label": "Point colour (no Z-Axis)", "type": "text",
-                            "default": MPL_ACCENT},
-            "palette":     {"label": "Z-Axis colour palette", "type": "choice", "default": MPL_DEFAULT_PALETTE,
+            "color":       {"label": "Point colour",     "type": "text",   "default": MPL_ACCENT},
+            "palette":     {"label": "Z-Axis palette",   "type": "choice", "default": MPL_DEFAULT_PALETTE,
                             "choices": ["tab10", "tab20", "Set1", "Set2", "viridis", "plasma",
                                         "Blues", "Greens", "RdBu_r", "coolwarm"]},
-            "trend_line":  {"label": "Show trend line",     "type": "choice", "default": "None",
+            "trend_line":  {"label": "Trend line",       "type": "choice", "default": "None",
                             "choices": ["None", "Linear", "LOWESS", "Exponential"]},
-            "trend_color": {"label": "Trend line colour",   "type": "text",   "default": MPL_TREND},
+            "trend_color": {"label": "Trend colour",     "type": "text",   "default": MPL_TREND},
             **BaseChart._title_style_options(),
         }
 
@@ -135,6 +134,14 @@ class ScatterPlot(BaseChart):
         self._apply_figure_style(fig, ax)
         if sampled:
             self._add_sample_note(ax, 50_000)
+
+        # ── Edit dialog visibility ────────────────────────────────────────────
+        has_z   = bool(colour_var)
+        has_trend = (self._opt("trend_line") or "None") != "None"
+        self._set_visible("color",       not has_z)
+        self._set_visible("palette",     has_z)
+        self._set_visible("trend_color", has_trend)
+
         fig.tight_layout()
 
     # ── Colour-by helper ───────────────────────────────────────────────────────

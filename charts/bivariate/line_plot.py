@@ -110,4 +110,8 @@ class LinePlot(BaseChart):
         )
         self._apply_title(ax, self._opt("title") or default_title)
         self._apply_figure_style(fig, ax)
+
+        # ── Edit dialog visibility ────────────────────────────────────────────
+        self._set_visible("z_color", z_is_line)
+
         fig.tight_layout()

@@ -7,8 +7,9 @@ Schema format per option key:
         "label":   str,
         "type":    "text" | "bool" | "choice",
         "default": <any>,
-        "choices": [str, ...]   # only for type == "choice"
+        "choices": [str, ...]        # only for type == "choice"
         "group":   "title" | "axes" | "color" | "other"  # optional override
+        "visible": bool              # set by chart.render(); default True
     }
 
 Options are displayed in four groups separated by subtle horizontal lines:
@@ -16,6 +17,9 @@ Options are displayed in four groups separated by subtle horizontal lines:
   2. Axes   — axis labels and axis-behaviour controls
   3. Color  — colour / palette selectors (keys containing "color" or "palette")
   4. Other  — layout, bins, chart type, feature toggles
+
+Options with ``"visible": False`` are skipped; charts set this in render()
+to hide inapplicable controls.  See BaseChart._set_visible().
 
 A schema entry may carry ``"group": "<name>"`` to override the heuristic.
 See ``_classify_group()`` for the full logic.
@@ -26,8 +30,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLineEdit,
-    QCheckBox, QComboBox, QPushButton, QFormLayout, QFrame,
+    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
+    QCheckBox, QComboBox, QPushButton, QFrame, QGridLayout,
 )
 from PyQt6.QtCore import Qt
 
@@ -44,11 +48,11 @@ def _classify_group(key: str, schema: dict) -> str:
 
     Priority:
       1. Explicit ``"group"`` field in *schema* — use it directly.
-      2. Key starts with ``"title"``         → ``"title"``
-      3. Key contains ``"color"`` or ``"palette"`` → ``"color"``
-      4. Key ends with ``"_label"`` or is in the axis-behaviour set
-         (``rotate_x``, ``sort_x``, ``shared_x``, ``shared_axes``)  → ``"axes"``
-      5. Everything else                      → ``"other"``
+      2. Key starts with ``"title"``                            → ``"title"``
+      3. Key contains ``"color"`` or ``"palette"``             → ``"color"``
+      4. Key ends with ``"_label"`` or is in the axis-behaviour
+         set (``rotate_x``, ``sort_x``, ``shared_x``, ``shared_axes``) → ``"axes"``
+      5. Everything else                                        → ``"other"``
 
     When naming new options, following these conventions means the grouping
     works automatically without adding an explicit ``"group"`` key.
@@ -70,57 +74,83 @@ def _classify_group(key: str, schema: dict) -> str:
 class ChartEditDialog(QDialog):
     """Modal dialog for editing chart-specific options."""
 
+    # Vertical padding (px) inserted above and below each group separator
+    _SEP_PADDING = 4
+
     def __init__(self, chart: "BaseChart", parent=None):
         super().__init__(parent)
-        self.setWindowTitle(f"Edit Chart — {chart.DISPLAY_NAME}")
-        self.setMinimumWidth(380)
+        self.setWindowTitle(f"Edit — {chart.DISPLAY_NAME}")
+        self.setMinimumWidth(360)
 
         self._chart   = chart
         self._options = chart.get_edit_options()
         self._widgets: dict[str, QCheckBox | QLineEdit | QComboBox] = {}
 
-        layout = QVBoxLayout(self)
-        layout.setSpacing(8)
-        layout.setContentsMargins(12, 12, 12, 12)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(14, 14, 14, 10)
+        outer.setSpacing(0)
 
-        # ── Bucket options into groups (preserving declaration order) ─────────
+        # ── Bucket visible options into groups (preserving declaration order) ──
         grouped: dict[str, list[tuple[str, dict]]] = {g: [] for g in _GROUP_ORDER}
         for key, schema in self._options.items():
+            if not schema.get("visible", True):
+                continue
             group = _classify_group(key, schema)
             grouped[group].append((key, schema))
 
-        # ── Render each non-empty group, separated by subtle dividers ─────────
-        first_visible = True
+        # ── Build a single QGridLayout so every label/widget column aligns ────
+        # Column 0 = right-aligned labels; column 1 = expanding widgets.
+        # Group separators are full-width rows inside the same grid.
+        grid = QGridLayout()
+        grid.setColumnStretch(1, 1)
+        grid.setHorizontalSpacing(12)
+        grid.setVerticalSpacing(7)
+
+        grid_row    = 0
+        first_group = True
+
         for group_name in _GROUP_ORDER:
             items = grouped[group_name]
             if not items:
                 continue
 
-            if not first_visible:
-                self._add_group_separator(layout)
-            first_visible = False
+            if not first_group:
+                # Padding row above separator
+                grid.setRowMinimumHeight(grid_row, self._SEP_PADDING)
+                grid_row += 1
+                # Separator spanning both columns
+                sep = QFrame()
+                sep.setFrameShape(QFrame.Shape.HLine)
+                sep.setFrameShadow(QFrame.Shadow.Plain)
+                sep.setStyleSheet("QFrame { color: #E2E8F0; }")
+                grid.addWidget(sep, grid_row, 0, 1, 2)
+                grid_row += 1
+                # Padding row below separator
+                grid.setRowMinimumHeight(grid_row, self._SEP_PADDING)
+                grid_row += 1
 
-            form = QFormLayout()
-            form.setFieldGrowthPolicy(
-                QFormLayout.FieldGrowthPolicy.ExpandingFieldsGrow
-            )
-            form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
-            form.setVerticalSpacing(6)
-            form.setHorizontalSpacing(10)
+            first_group = False
 
             for key, schema in items:
+                lbl = QLabel(schema.get("label", key) + ":")
+                lbl.setAlignment(
+                    Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+                )
                 widget = self._make_widget(key, schema)
                 self._widgets[key] = widget
-                form.addRow(schema.get("label", key) + ":", widget)
+                grid.addWidget(lbl,    grid_row, 0)
+                grid.addWidget(widget, grid_row, 1)
+                grid_row += 1
 
-            layout.addLayout(form)
+        outer.addLayout(grid)
+        outer.addSpacing(10)
 
         # ── Separator before action buttons ───────────────────────────────────
-        layout.addSpacing(4)
         btn_sep = QFrame()
         btn_sep.setFrameShape(QFrame.Shape.HLine)
         btn_sep.setFrameShadow(QFrame.Shadow.Plain)
-        layout.addWidget(btn_sep)
+        outer.addWidget(btn_sep)
+        outer.addSpacing(6)
 
         # ── Action buttons ────────────────────────────────────────────────────
         btn_row = QHBoxLayout()
@@ -133,21 +163,9 @@ class ChartEditDialog(QDialog):
         apply_btn.clicked.connect(self.accept)
         btn_row.addWidget(cancel_btn)
         btn_row.addWidget(apply_btn)
-        layout.addLayout(btn_row)
+        outer.addLayout(btn_row)
 
     # ── Internal helpers ──────────────────────────────────────────────────────
-
-    @staticmethod
-    def _add_group_separator(layout: QVBoxLayout) -> None:
-        """Insert a subtle horizontal rule between option groups."""
-        layout.addSpacing(4)
-        line = QFrame()
-        line.setFrameShape(QFrame.Shape.HLine)
-        line.setFrameShadow(QFrame.Shadow.Plain)
-        # Use GREY_200 (#E2E8F0) to match the app's divider colour
-        line.setStyleSheet("QFrame { color: #E2E8F0; }")
-        layout.addWidget(line)
-        layout.addSpacing(4)
 
     @staticmethod
     def _make_widget(key: str, schema: dict) -> QCheckBox | QLineEdit | QComboBox:

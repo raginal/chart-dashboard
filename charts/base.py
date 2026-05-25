@@ -89,6 +89,17 @@ class BaseChart(ABC):
             if key in opts:
                 schema["value"] = opts[key]
 
+    def _set_visible(self, key: str, visible: bool) -> None:
+        """
+        Show or hide one edit option in the Quick Edit dialog.
+
+        Call this inside render() so the dialog reflects the current
+        variable selection when the user opens it.  Options not present
+        in self._edit_options are silently ignored.
+        """
+        if key in self._edit_options:
+            self._edit_options[key]["visible"] = visible
+
     def get_edit_options(self) -> dict:
         """Return a copy of the current edit options (including user values)."""
         return {
