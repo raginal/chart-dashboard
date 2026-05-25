@@ -219,15 +219,26 @@ class RangeLinePlot(BaseChart):
         )
 
         # ── Project ribbon across the FULL current year ───────────────────────
-        # Generate a dense date range so the shaded band fills Jan – Dec even
-        # where current-year data does not yet exist.
+        # Generate a date range at the natural data cadence.  Then append
+        # x_axis_end (Dec 31) as a closing sentinel if the last natural date
+        # falls short.  The sentinel forward-fills the last period's calendar
+        # key so the ribbon extends to Dec 31 without any gap:
+        #   e.g. quarterly: Oct 1 → Dec 31 filled with Q4 min/max
+        #         monthly:  Dec 1 → Dec 31 filled with December min/max
         ribbon_dates = pd.date_range(
             current_start, x_axis_end, freq=self._RIBBON_FREQ[data_freq]
         )
-        ribbon_keys = self._calendar_key(pd.Series(ribbon_dates), data_freq)
-        band_min    = ribbon_keys.map(hist_stats["min"]).values.astype(float)
-        band_max    = ribbon_keys.map(hist_stats["max"]).values.astype(float)
-        band_mean   = ribbon_keys.map(hist_stats["mean"]).values.astype(float)
+        if len(ribbon_dates) == 0 or ribbon_dates[-1] < x_axis_end - pd.Timedelta(days=1):
+            ribbon_dates = ribbon_dates.append(pd.DatetimeIndex([x_axis_end]))
+
+        ribbon_keys_s = self._calendar_key(pd.Series(ribbon_dates), data_freq).copy()
+        # Forward-fill the sentinel point so it inherits the last real period's key
+        if len(ribbon_keys_s) > 1 and ribbon_dates[-1] == x_axis_end:
+            ribbon_keys_s.iloc[-1] = ribbon_keys_s.iloc[-2]
+
+        band_min    = ribbon_keys_s.map(hist_stats["min"]).values.astype(float)
+        band_max    = ribbon_keys_s.map(hist_stats["max"]).values.astype(float)
+        band_mean   = ribbon_keys_s.map(hist_stats["mean"]).values.astype(float)
         ribbon_x    = ribbon_dates.values   # numpy datetime64 — matplotlib handles natively
 
         # ── Draw range ribbon ─────────────────────────────────────────────────
