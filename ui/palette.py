@@ -143,9 +143,12 @@ QComboBox::drop-down {{
     width: 20px;
 }}
 QComboBox QAbstractItemView {{
+    background-color: #FFFFFF;
+    color: {GREY_700};
     border: 1px solid {GREY_200};
     selection-background-color: {PRIMARY_LIGHT};
     selection-color: {PRIMARY};
+    outline: none;
 }}
 QComboBox:disabled {{
     background-color: {GREY_100};
@@ -339,6 +342,27 @@ QToolButton {{
 QToolButton:hover {{
     background-color: {GREY_100};
     border-color: {GREY_200};
+}}
+
+/* ── Item views (list / tree / table popup interiors) ── */
+/* Explicit background+color prevents the OS dark-mode palette from
+   showing through any view surface not covered by a more specific rule. */
+QAbstractItemView {{
+    background-color: #FFFFFF;
+    color: {GREY_700};
+    alternate-background-color: {GREY_50};
+    selection-background-color: {PRIMARY_LIGHT};
+    selection-color: {PRIMARY};
+}}
+
+/* ── Tooltip ── */
+QToolTip {{
+    background-color: {GREY_900};
+    color: #FFFFFF;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
 }}
 
 /* ── Menu (transform QMenu) ── */
