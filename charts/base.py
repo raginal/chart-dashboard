@@ -193,9 +193,11 @@ class BaseChart(ABC):
             **BaseChart._title_style_options()
         """
         return {
-            "title_bold":  {"label": "Bold title",      "type": "bool",   "default": True},
+            "title_bold":  {"label": "Bold title",      "type": "bool",   "default": True,
+                            "group": "title"},
             "title_align": {"label": "Title alignment", "type": "choice", "default": "Center",
-                            "choices": ["Center", "Left", "Right"]},
+                            "choices": ["Center", "Left", "Right"],
+                            "group": "title"},
         }
 
     def _apply_title(self, ax, title_text: str, *,

@@ -176,6 +176,21 @@ class FacetedHistogram(BaseChart):
             row, col = divmod(idx, ncols)
             axes[row][col].set_visible(False)
 
+        # ── Shared axes — enforce identical scales across all panels ──────────
+        # Y axis (count): always shared so bar heights are comparable.
+        # X axis: shared for numeric when shared_x is on.
+        visible_axes = [
+            axes[r][c]
+            for r, c in (divmod(i, ncols) for i in range(len(facets)))
+        ]
+        y_max = max((ax.get_ylim()[1] for ax in visible_axes), default=1)
+        for ax in visible_axes:
+            ax.set_ylim(0, y_max)
+
+        if is_numeric and shared_x and bin_edges is not None:
+            for ax in visible_axes:
+                ax.set_xlim(bin_edges[0], bin_edges[-1])
+
         x_label = VariableTransformer.axis_label(x_col, selection.x_transform())
         y_col   = selection.y_var
         title   = self._opt("title") or f"Distribution of {x_label} by {y_col}"
