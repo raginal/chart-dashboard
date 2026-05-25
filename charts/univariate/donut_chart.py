@@ -103,11 +103,14 @@ class DonutChart(BaseChart):
             return "\n".join(parts) if parts else ""
 
         # ── Draw ──────────────────────────────────────────────────────────────
+        # Always pass _autopct (returns "" when both toggles are off) so that
+        # ax.pie() always unpacks as (patches, texts, autotexts).  Passing
+        # autopct=None returns only a 2-tuple and causes a crash on unpack.
         wedges, texts, autotexts = ax.pie(
             values,
             labels=labels,
             colors=colors,
-            autopct=_autopct if (show_pct or show_count) else None,
+            autopct=_autopct,
             pctdistance=0.78,
             startangle=90,
             wedgeprops=dict(width=0.52, edgecolor="white", linewidth=1.5),
@@ -126,4 +129,9 @@ class DonutChart(BaseChart):
                 fontsize=11, fontweight='600', color="#334155")
 
         self._apply_figure_style(fig, ax)
+
+        # ── Edit dialog visibility ────────────────────────────────────────────
+        # num_bins only applies when X is binned (numeric / date)
+        self._set_visible("num_bins", var_type in (VariableType.INTERVAL, VariableType.DATE))
+
         fig.tight_layout()

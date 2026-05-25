@@ -84,6 +84,36 @@ class ChartSelector:
     # applicable == {"univariate": [...], "bivariate": [...], "trivariate": [...]}
     """
 
+    @staticmethod
+    def univariate_specs(var_type: "VariableType | None") -> list[ChartSpec]:
+        """
+        Return the applicable univariate ChartSpecs for a single variable type.
+
+        Called by get_applicable_charts() for the initial X-Axis variable and
+        re-called by ChartTabPane whenever the variable picker changes, so the
+        chart dropdown always reflects the *displayed* variable's type rather
+        than the union of all selected variables.
+
+        Donut / Column  — NOMINAL, ORDINAL, LOCATION (not DATE or INTERVAL)
+        Box / Violin / Histogram / Density / Strip / CDF / Q-Q
+                        — INTERVAL or DATE
+        """
+        specs: list[ChartSpec] = []
+        if _is_cat_like(var_type):          # NOMINAL / ORDINAL / LOCATION
+            specs.append(ChartSpec("donut_chart",  "univariate", "Donut Chart"))
+            specs.append(ChartSpec("column_chart", "univariate", "Column Chart"))
+        if _is_numeric(var_type):           # INTERVAL or DATE
+            specs += [
+                ChartSpec("box_plot",          "univariate", "Box Plot"),
+                ChartSpec("violin_plot",       "univariate", "Violin Plot"),
+                ChartSpec("histogram",         "univariate", "Histogram"),
+                ChartSpec("density_plot",      "univariate", "Density Plot"),
+                ChartSpec("strip_chart",       "univariate", "Strip Chart"),
+                ChartSpec("cumulative_density","univariate", "Cumulative Density"),
+                ChartSpec("qq_plot",           "univariate", "Q-Q Plot"),
+            ]
+        return specs
+
     def get_applicable_charts(
         self,
         selection: VariableSelection,
@@ -102,34 +132,14 @@ class ChartSelector:
         has_z = selection.group_var is not None
 
         # ── Univariate ────────────────────────────────────────────────────────
-        # Active whenever ANY variable is selected.
-        all_selected = [
-            (col, selection.var_types.get(col))
-            for col in (selection.x_var, selection.y_var, selection.group_var)
-            if col is not None
-        ]
-        _any_selected    = len(all_selected) > 0
-        _any_numeric     = any(_is_numeric(vt)     for _, vt in all_selected)
-        _any_categorical = any(_is_categorical(vt) for _, vt in all_selected)
-        _any_location    = any(_is_location(vt)    for _, vt in all_selected)
-
-        if _any_selected:
-            uni: list[ChartSpec] = []
-            # Donut & Column — strictly categorical or location only (not date)
-            if _any_categorical or _any_location:
-                uni.append(ChartSpec("donut_chart",  "univariate", "Donut Chart"))
-                uni.append(ChartSpec("column_chart", "univariate", "Column Chart"))
-            if _any_numeric:
-                uni += [
-                    ChartSpec("box_plot",          "univariate", "Box Plot"),
-                    ChartSpec("violin_plot",        "univariate", "Violin Plot"),
-                    ChartSpec("histogram",          "univariate", "Histogram"),
-                    ChartSpec("density_plot",       "univariate", "Density Plot"),
-                    ChartSpec("strip_chart",        "univariate", "Strip Chart"),
-                    ChartSpec("cumulative_density", "univariate", "Cumulative Density"),
-                    ChartSpec("qq_plot",            "univariate", "Q-Q Plot"),
-                ]
-            result["univariate"] = uni
+        # Seeded from the X-Axis variable type.  When the user picks a different
+        # variable in the dashboard's variable picker, ChartTabPane re-calls
+        # univariate_specs() for the chosen variable and updates the chart list
+        # dynamically — so the chart dropdown always matches what's displayed.
+        if has_x:
+            specs = self.univariate_specs(x_t)
+            if specs:
+                result["univariate"] = specs
 
         # ── Bivariate ─────────────────────────────────────────────────────────
         # Categorical rules use _is_cat_like so DATE qualifies alongside

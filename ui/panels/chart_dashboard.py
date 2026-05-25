@@ -29,6 +29,7 @@ from matplotlib.figure import Figure
 from charts.base import BaseChart
 from charts.registry import CHART_REGISTRY
 from core.chart_config import VariableSelection, ChartSpec
+from core.chart_selector import ChartSelector
 from core.variable_classifier import VariableType
 from core.exporter import Exporter
 from ui.dialogs.chart_edit_dialog import ChartEditDialog
@@ -145,9 +146,12 @@ class ChartTabPane(QWidget):
         self._numeric_vars = numeric_vars or []
 
         # ── Update variable picker (univariate only) ───────────────────────
+        # Show picker whenever more than one variable is selected, regardless
+        # of type — each variable has its own applicable univariate charts.
         show_picker = (
             self._dimensionality == "univariate" and len(self._numeric_vars) > 1
         )
+
         self._var_picker_label.setVisible(show_picker)
         self._var_picker.setVisible(show_picker)
 
@@ -208,21 +212,54 @@ class ChartTabPane(QWidget):
 
     # ── Internal ───────────────────────────────────────────────────────────────
 
+    def _update_chart_combo(self, specs: list[ChartSpec]) -> None:
+        """
+        Repopulate the chart dropdown with *specs* (without triggering a render).
+
+        Tries to keep the previously-selected chart if it still applies; falls
+        back to the first item in the new list.  Updates self._chart_specs so
+        that the change-detection in _render_selected() stays consistent.
+        """
+        prev_id = self.chart_combo.currentData()
+        self.chart_combo.blockSignals(True)
+        self.chart_combo.clear()
+        for spec in specs:
+            self.chart_combo.addItem(spec.name, userData=spec.chart_id)
+        restored = False
+        if prev_id:
+            for i in range(self.chart_combo.count()):
+                if self.chart_combo.itemData(i) == prev_id:
+                    self.chart_combo.setCurrentIndex(i)
+                    restored = True
+                    break
+        if not restored:
+            self.chart_combo.setCurrentIndex(0)
+        self.chart_combo.blockSignals(False)
+        self._chart_specs = specs
+
     def _render_selected(self) -> None:
-        chart_id = self.chart_combo.currentData()
-        if not chart_id or self._current_df is None or self._current_sel is None:
+        if self._current_df is None or self._current_sel is None:
             return
 
-        # For the univariate tab, substitute x_var with the picker selection
+        # ── Univariate: re-filter chart list when picked variable type changes ─
+        # The initial chart list is seeded from x_type(); when the user picks a
+        # different variable in the variable picker, recompute the applicable
+        # charts for *that* variable's type so the dropdown stays correct.
         sel = self._current_sel
-        if (
-            self._dimensionality == "univariate"
-            and self._var_picker.isVisible()
-            and self._var_picker.currentText()
-        ):
+        if self._dimensionality == "univariate" and self._var_picker.isVisible():
             chosen = self._var_picker.currentText()
-            if chosen != sel.x_var:
-                sel = dc_replace(sel, x_var=chosen)
+            if chosen:
+                var_type    = sel.var_types.get(chosen)
+                needed_specs = ChartSelector.univariate_specs(var_type)
+                if needed_specs != self._chart_specs:
+                    self._update_chart_combo(needed_specs)
+                # Substitute x_var so charts render the chosen variable
+                if chosen != sel.x_var:
+                    sel = dc_replace(sel, x_var=chosen)
+
+        chart_id = self.chart_combo.currentData()
+        if not chart_id:
+            return
 
         # Lazily instantiate chart
         if chart_id not in self._chart_instances:
