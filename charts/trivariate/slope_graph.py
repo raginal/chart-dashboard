@@ -59,6 +59,7 @@ class SlopeGraph(BaseChart):
             "date_end":         {"label": "End date (override)",      "type": "text", "default": "",
                                  "group": "axes"},
             "show_left_labels": {"label": "Show left-side values",    "type": "bool", "default": False},
+            "gridlines":        {"label": "Show gridlines",           "type": "bool", "default": False},
             "label_size":       {"label": "Label font size",          "type": "text", "default": "9"},
             **BaseChart._title_style_options(),
         }
@@ -238,7 +239,7 @@ class SlopeGraph(BaseChart):
         y_max  = max(y_all)
         nudged = self._nudge_labels(y_right, y_min, y_max, label_size)
 
-        text_x = 1.0 + dot_size * 0.012 + 0.04   # a little right of the dot
+        text_x = 1.0 + dot_size * 0.012 + 0.015   # a little right of the dot
 
         for entity, yr_raw, yr_nudged in zip(entities, y_right, nudged):
             ax.text(text_x, yr_nudged, str(entity),
@@ -248,7 +249,7 @@ class SlopeGraph(BaseChart):
         # ── Optional left-side value annotations ──────────────────────────────
         if show_left_labels:
             nudged_left = self._nudge_labels(y_left, y_min, y_max, label_size)
-            left_text_x = 0.0 - dot_size * 0.012 - 0.04
+            left_text_x = 0.0 - dot_size * 0.012 - 0.015
             for yl_raw, yl_nudged in zip(y_left, nudged_left):
                 ax.text(left_text_x, yl_nudged,
                         f"{yl_raw:,.4g}",
@@ -269,7 +270,7 @@ class SlopeGraph(BaseChart):
         ax.tick_params(axis="x", length=0)   # hide tick marks, keep labels
 
         # ── Y-axis ────────────────────────────────────────────────────────────
-        ax.set_xlim(-0.35, text_x + 0.05)    # leave room for right-side labels
+        ax.set_xlim(-0.09, text_x + 0.04)    # tight left; modest right margin for labels
         padding = (y_max - y_min) * 0.05 if y_max > y_min else 1
         ax.set_ylim(y_min - padding, y_max + padding)
 
@@ -294,5 +295,5 @@ class SlopeGraph(BaseChart):
             f"{y_col} — {hdr_left} vs {hdr_right}"
         )
         self._apply_title(ax, self._opt("title") or default_title)
-        self._apply_figure_style(fig, ax)
+        self._apply_figure_style(fig, ax, grid=bool(self._opt("gridlines")))
         fig.tight_layout()
