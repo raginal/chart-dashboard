@@ -1,36 +1,41 @@
 """
 Range Line Plot — seasonal context chart for Date × Numeric pairs.
 
-Inspired by EIA-style inventory ribbon charts.  The chart splits the data into
-two calendar-aligned periods:
+Inspired by EIA-style inventory ribbon charts.  The chart splits the data
+into two calendar-aligned periods:
 
 • **Historical period** — grouped by calendar position to build a min–max
-  ribbon (and optional average line).
+  ribbon and optional average line.
 
-• **Current period** — the current calendar year, plotted as a long-dashed
-  line over the same x-axis.
-
-The x-axis always spans the **full current calendar year** (Jan 1 – Dec 31),
-even when the data has not yet reached year-end, so you always see the
-complete annual window.
+• **Current period** — plotted as a line (dashed or solid) over the same
+  x-axis.
 
 Range modes
 -----------
-  "1 Year"   — current year vs 1 prior year of history.
-  "5 Years"  — current year vs 5 prior calendar years.  (default)
-  "10 Years" — current year vs 10 prior calendar years.
+  "1 Year"   — current calendar MONTH vs the 12 prior calendar months.
+               X-axis spans day 1 → last day of the current month.
+               Group key adapts to cadence:
+                 weekly → week-of-month (1–5)
+                 daily  → day-of-month  (1–31)
+               Legend: "1-yr Range" / "Current Month"
 
-Calendar grouping is **inferred from the data cadence**:
-  daily    → day-of-year   (up to 366 positions)
-  weekly   → ISO week      (1–53)
-  monthly  → month number  (1–12)
-  quarterly→ quarter       (1–4)
+  "5 Years"  — current calendar YEAR vs 5 prior calendar years. (default)
+  "10 Years" — current calendar YEAR vs 10 prior calendar years.
+               Both use the annual view: x-axis Jan 1 → Dec 31.
+               Group key adapts to cadence:
+                 daily     → day-of-year (366 positions)
+                 weekly    → ISO week    (1–53)
+                 monthly   → month       (1–12)
+                 quarterly → quarter     (1–4)
+               Legend: "N-yr Range" / "Current Year"
 
-X-axis tick labels are formatted to match that cadence so the chart always
-reads intuitively regardless of whether the underlying data is weekly EIA
-inventory, monthly economic releases, or quarterly earnings.
+X-axis ticks are formatted to match cadence:
+  daily/weekly/monthly → abbreviated month names  (Jan … Dec)
+  quarterly            → quarter labels           (Q1 Q2 Q3 Q4)
+  1-Year monthly view  → day-of-month labels      (1  8  15  22  29)
 """
 from __future__ import annotations
+import calendar as _cal
 import numpy as np
 import pandas as pd
 from matplotlib.figure import Figure
@@ -59,6 +64,9 @@ class RangeLinePlot(BaseChart):
             "y_label":       {"label": "Y-axis label",          "type": "text",   "default": ""},
             "period":        {"label": "Range period",          "type": "choice", "default": "5 Years",
                               "choices": ["1 Year", "5 Years", "10 Years"]},
+            "line_style":    {"label": "Current period line",   "type": "choice", "default": "Dashed",
+                              "choices": ["Dashed", "Solid"],   "group": "other"},
+            "markers":       {"label": "Show data markers",     "type": "bool",   "default": False},
             "show_mean":     {"label": "Show range average",    "type": "bool",   "default": False},
             "current_color": {"label": "Current period colour", "type": "text",   "default": MPL_ACCENT},
             "range_color":   {"label": "Range colour",          "type": "text",   "default": "#CBD5E1"},
@@ -72,15 +80,17 @@ class RangeLinePlot(BaseChart):
         "5 Years":  "5-yr Range",
         "10 Years": "10-yr Range",
     }
+    _CURRENT_LABELS: dict[str, str] = {
+        "1 Year":   "Current Month",
+        "5 Years":  "Current Year",
+        "10 Years": "Current Year",
+    }
 
     # ── Data-frequency detection ──────────────────────────────────────────────
 
     @staticmethod
     def _detect_freq(sorted_dates: pd.Series) -> str:
-        """
-        Infer cadence from a sorted datetime Series.
-        Returns one of: 'daily' | 'weekly' | 'monthly' | 'quarterly'.
-        """
+        """Infer cadence: 'daily' | 'weekly' | 'monthly' | 'quarterly'."""
         if len(sorted_dates) < 2:
             return "weekly"
         gaps = sorted_dates.diff().dropna().dt.days
@@ -96,16 +106,32 @@ class RangeLinePlot(BaseChart):
     # ── Calendar-key helpers ──────────────────────────────────────────────────
 
     @staticmethod
-    def _calendar_key(dates: pd.Series, data_freq: str) -> pd.Series:
+    def _calendar_key(dates: pd.Series, group_key: str) -> pd.Series:
         """Map a datetime Series to integer calendar-position keys."""
-        if data_freq == "daily":
+        if group_key == "dayofyear":
             return dates.dt.dayofyear
-        if data_freq == "weekly":
+        if group_key == "weekofyear":
             return dates.dt.isocalendar().week.astype(int)
-        if data_freq == "monthly":
+        if group_key == "month":
             return dates.dt.month
-        # quarterly
-        return dates.dt.quarter
+        if group_key == "quarter":
+            return dates.dt.quarter
+        if group_key == "dayofmonth":
+            return dates.dt.day
+        if group_key == "weekofmonth":
+            # 1 = days 1–7, 2 = days 8–14, 3 = days 15–21, 4 = days 22–28, 5 = days 29–31
+            return (dates.dt.day - 1) // 7 + 1
+        return dates.dt.day   # fallback
+
+    @staticmethod
+    def _freq_to_group_key(data_freq: str) -> str:
+        """Map a cadence string to the annual-view group key."""
+        return {
+            "daily":     "dayofyear",
+            "weekly":    "weekofyear",
+            "monthly":   "month",
+            "quarterly": "quarter",
+        }.get(data_freq, "weekofyear")
 
     # ── Ribbon projection frequency ───────────────────────────────────────────
 
@@ -116,38 +142,23 @@ class RangeLinePlot(BaseChart):
         "quarterly": "QS",
     }
 
-    # ── Period boundaries ─────────────────────────────────────────────────────
-
-    @staticmethod
-    def _period_boundaries(
-        end: pd.Timestamp, period: str
-    ) -> tuple[pd.Timestamp, pd.Timestamp, pd.Timestamp]:
-        """
-        Return (current_start, hist_start, x_axis_end).
-
-        All three periods share the same structure — only the number of
-        historical years differs.  The current period is always the current
-        calendar year; the x-axis always extends to Dec 31 of that year.
-        """
-        n_hist = {"1 Year": 1, "5 Years": 5, "10 Years": 10}.get(period, 5)
-        yr            = end.year
-        current_start = pd.Timestamp(yr, 1, 1)
-        hist_start    = pd.Timestamp(yr - n_hist, 1, 1)
-        x_axis_end    = pd.Timestamp(yr, 12, 31)
-        return current_start, hist_start, x_axis_end
-
     # ── Axis formatting ───────────────────────────────────────────────────────
 
     @staticmethod
-    def _apply_range_axis_fmt(ax, data_freq: str, fig: Figure) -> None:
+    def _apply_range_axis_fmt(
+        ax, view: str, data_freq: str, fig: Figure
+    ) -> None:
         """
-        Set x-axis tick locator + formatter to match the data cadence.
+        Set x-axis tick locator + formatter.
 
-        daily / weekly  → monthly major ticks, abbreviated month label
-        monthly         → monthly major ticks, abbreviated month label
-        quarterly       → quarterly major ticks, "Q1 / Q2 / …" labels
+        view == 'monthly'  (1 Year):  weekly ticks, day-of-month labels
+        view == 'annual'   (5Y/10Y):  monthly or quarterly ticks
         """
-        if data_freq in ("daily", "weekly", "monthly"):
+        if view == "monthly":
+            ax.xaxis.set_major_locator(mdates.DayLocator(interval=7))
+            ax.xaxis.set_major_formatter(mdates.DateFormatter("%-d"))
+            fig.autofmt_xdate(rotation=0, ha="center")
+        elif data_freq in ("daily", "weekly", "monthly"):
             ax.xaxis.set_major_locator(mdates.MonthLocator())
             ax.xaxis.set_major_formatter(mdates.DateFormatter("%b"))
             fig.autofmt_xdate(rotation=30, ha="right")
@@ -181,22 +192,42 @@ class RangeLinePlot(BaseChart):
                     ha="center", va="center", transform=ax.transAxes, color="#94A3B8")
             return
 
-        # ── Detect data frequency from the full series ────────────────────────
         data_freq = self._detect_freq(sub[x_col])
+        period    = self._opt("period") or "5 Years"
+        end_date  = sub[x_col].max()
 
-        # ── Calendar-aligned period split ─────────────────────────────────────
-        period = self._opt("period") or "5 Years"
-        end_date      = sub[x_col].max()
-        current_start, hist_start, x_axis_end = self._period_boundaries(end_date, period)
+        # ── Period boundaries and group key ───────────────────────────────────
+        if period == "1 Year":
+            # Monthly view: current calendar month vs 12 prior months
+            yr, mo        = end_date.year, end_date.month
+            current_start = pd.Timestamp(yr, mo, 1)
+            hist_start    = current_start - pd.DateOffset(years=1)
+            last_day      = _cal.monthrange(yr, mo)[1]
+            x_axis_end    = pd.Timestamp(yr, mo, last_day)
+            group_key     = "weekofmonth" if data_freq == "weekly" else "dayofmonth"
+            ribbon_freq   = "D"           # daily ribbon for smooth monthly fill
+            view          = "monthly"
+        else:
+            # Annual view: current calendar year vs N prior years
+            n             = 5 if period == "5 Years" else 10
+            yr            = end_date.year
+            current_start = pd.Timestamp(yr, 1, 1)
+            hist_start    = pd.Timestamp(yr - n, 1, 1)
+            x_axis_end    = pd.Timestamp(yr, 12, 31)
+            group_key     = self._freq_to_group_key(data_freq)
+            ribbon_freq   = self._RIBBON_FREQ[data_freq]
+            view          = "annual"
 
+        # ── Split into current and historical ─────────────────────────────────
         current    = sub[sub[x_col] >= current_start].copy()
         historical = sub[
             (sub[x_col] >= hist_start) & (sub[x_col] < current_start)
         ].copy()
 
         if current.empty:
+            label = "month" if view == "monthly" else "year"
             ax.text(0.5, 0.5,
-                    "Not enough data for the current year.\n"
+                    f"Not enough data for the current {label}.\n"
                     "Try a shorter range period.",
                     ha="center", va="center", transform=ax.transAxes,
                     color="#94A3B8", fontsize=10)
@@ -211,40 +242,36 @@ class RangeLinePlot(BaseChart):
             return
 
         # ── Aggregate historical by calendar position ─────────────────────────
-        hist_keys  = self._calendar_key(historical[x_col], data_freq)
+        hist_keys  = self._calendar_key(historical[x_col], group_key)
         hist_stats = (
             historical.assign(_key=hist_keys)
             .groupby("_key")[y_col]
             .agg(["min", "max", "mean"])
         )
 
-        # ── Project ribbon across the FULL current year ───────────────────────
-        # Generate a date range at the natural data cadence.  Then append
-        # x_axis_end (Dec 31) as a closing sentinel if the last natural date
-        # falls short.  The sentinel forward-fills the last period's calendar
-        # key so the ribbon extends to Dec 31 without any gap:
-        #   e.g. quarterly: Oct 1 → Dec 31 filled with Q4 min/max
-        #         monthly:  Dec 1 → Dec 31 filled with December min/max
-        ribbon_dates = pd.date_range(
-            current_start, x_axis_end, freq=self._RIBBON_FREQ[data_freq]
-        )
+        # ── Project ribbon across the full period ─────────────────────────────
+        # Generate ribbon dates at the chosen frequency, then append x_axis_end
+        # as a closing sentinel so the last period (e.g. Q4, Dec, last week)
+        # fills all the way to the axis edge.
+        ribbon_dates = pd.date_range(current_start, x_axis_end, freq=ribbon_freq)
         if len(ribbon_dates) == 0 or ribbon_dates[-1] < x_axis_end - pd.Timedelta(days=1):
             ribbon_dates = ribbon_dates.append(pd.DatetimeIndex([x_axis_end]))
 
-        ribbon_keys_s = self._calendar_key(pd.Series(ribbon_dates), data_freq).copy()
-        # Forward-fill the sentinel point so it inherits the last real period's key
+        ribbon_keys_s = self._calendar_key(pd.Series(ribbon_dates), group_key).copy()
+        # Forward-fill sentinel point so it inherits the last real period's key
         if len(ribbon_keys_s) > 1 and ribbon_dates[-1] == x_axis_end:
             ribbon_keys_s.iloc[-1] = ribbon_keys_s.iloc[-2]
 
-        band_min    = ribbon_keys_s.map(hist_stats["min"]).values.astype(float)
-        band_max    = ribbon_keys_s.map(hist_stats["max"]).values.astype(float)
-        band_mean   = ribbon_keys_s.map(hist_stats["mean"]).values.astype(float)
-        ribbon_x    = ribbon_dates.values   # numpy datetime64 — matplotlib handles natively
+        band_min  = ribbon_keys_s.map(hist_stats["min"]).values.astype(float)
+        band_max  = ribbon_keys_s.map(hist_stats["max"]).values.astype(float)
+        band_mean = ribbon_keys_s.map(hist_stats["mean"]).values.astype(float)
+        ribbon_x  = ribbon_dates.values
 
         # ── Draw range ribbon ─────────────────────────────────────────────────
         range_color   = self._opt("range_color")   or "#CBD5E1"
         current_color = self._opt("current_color") or MPL_ACCENT
         period_label  = self._PERIOD_LABELS.get(period, "Range")
+        current_label = self._CURRENT_LABELS.get(period, "Current")
 
         valid = ~(np.isnan(band_min) | np.isnan(band_max))
         if valid.any():
@@ -252,10 +279,7 @@ class RangeLinePlot(BaseChart):
                 ribbon_x,
                 np.where(valid, band_min, np.nan),
                 np.where(valid, band_max, np.nan),
-                alpha=0.45,
-                color=range_color,
-                label=period_label,
-                zorder=2,
+                alpha=0.45, color=range_color, label=period_label, zorder=2,
             )
 
         # ── Optional range average ────────────────────────────────────────────
@@ -265,39 +289,37 @@ class RangeLinePlot(BaseChart):
                 ax.plot(
                     ribbon_x,
                     np.where(valid_mean, band_mean, np.nan),
-                    color="#64748B",
-                    linewidth=1.4,
-                    linestyle="-",
-                    label=f"{period_label} Avg",
-                    zorder=3,
+                    color="#64748B", linewidth=1.4, linestyle="-",
+                    label=f"{period_label} Avg", zorder=3,
                 )
 
-        # ── Current-year line (long-dashed, actual data only) ─────────────────
+        # ── Current-period line ───────────────────────────────────────────────
+        ls     = "-" if (self._opt("line_style") or "Dashed") == "Solid" else (0, (8, 4))
+        marker = "o" if self._opt("markers") else None
         ax.plot(
             current[x_col].values,
             current[y_col].values,
-            color=current_color,
-            linewidth=2,
-            linestyle=(0, (8, 4)),   # long-dash pattern
-            label="Current Year",
-            zorder=4,
+            color=current_color, linewidth=2, linestyle=ls,
+            marker=marker, markersize=4, markerfacecolor=current_color,
+            label=current_label, zorder=4,
         )
 
-        # ── Set x-axis limits: first tick flush with y-axis, last tick near
-        #    the right edge with a half-interval right margin only.
-        #   quarterly: ticks Jan/Apr/Jul/Oct, interval ≈ 91 d → right margin 46 d
-        #   all others: monthly ticks Jan…Dec, interval ≈ 30 d → right margin 16 d
-        yr = current_start.year
-        if data_freq == "quarterly":
-            last_tick    = pd.Timestamp(yr, 10, 1)   # Q4 start
-            right_margin = pd.Timedelta(days=46)
-        else:  # daily / weekly / monthly  →  monthly major ticks, last = Dec
-            last_tick    = pd.Timestamp(yr, 12, 1)
-            right_margin = pd.Timedelta(days=16)
-        ax.set_xlim(pd.Timestamp(yr, 1, 1), last_tick + right_margin)
+        # ── X-axis limits ─────────────────────────────────────────────────────
+        if view == "monthly":
+            # Day 1 flush with y-axis; last day + 2-day right margin
+            ax.set_xlim(current_start, x_axis_end + pd.Timedelta(days=2))
+        else:
+            # Annual: Jan 1 flush left; half-interval right margin after last tick
+            if data_freq == "quarterly":
+                last_tick    = pd.Timestamp(yr, 10, 1)
+                right_margin = pd.Timedelta(days=46)
+            else:
+                last_tick    = pd.Timestamp(yr, 12, 1)
+                right_margin = pd.Timedelta(days=16)
+            ax.set_xlim(pd.Timestamp(yr, 1, 1), last_tick + right_margin)
 
-        # ── Data-cadence-aware axis labels ────────────────────────────────────
-        self._apply_range_axis_fmt(ax, data_freq, fig)
+        # ── Cadence-aware tick labels ─────────────────────────────────────────
+        self._apply_range_axis_fmt(ax, view, data_freq, fig)
 
         ax.legend(fontsize=9, framealpha=0.85, loc="best")
 
