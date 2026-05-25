@@ -165,11 +165,15 @@ class FacetedHistogram(BaseChart):
                     fontsize=max(6, 8 - max(n_cats - 5, 0)),
                 )
 
-            ax.set_title(str(facet), fontsize=9, fontweight='bold', pad=4)
+            ax.set_title(str(facet), fontsize=9, fontweight='bold', pad=4,
+                         color=self._text_color())
             ax.spines["top"].set_visible(False)
             ax.spines["right"].set_visible(False)
-            ax.tick_params(labelsize=8)
-            ax.set_ylabel("Count", fontsize=7)
+            ax.spines["left"].set_color(self._spine_color())
+            ax.spines["bottom"].set_color(self._spine_color())
+            ax.tick_params(colors=self._text_color(), labelsize=8)
+            ax.set_facecolor(self._chart_bg())
+            ax.set_ylabel("Count", fontsize=7, color=self._text_color())
 
         # Hide unused panels
         for idx in range(len(facets), nrows * ncols):
@@ -203,5 +207,5 @@ class FacetedHistogram(BaseChart):
 
         fig.tight_layout(rect=[0.0, 0.04, 1.0, 0.93])
         self._apply_suptitle(fig, title)
-        fig.supxlabel(x_label, fontsize=10, y=0.01)
-        fig.patch.set_facecolor("white")
+        fig.supxlabel(x_label, fontsize=10, y=0.01, color=self._text_color())
+        fig.patch.set_facecolor(self._chart_bg())

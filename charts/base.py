@@ -112,22 +112,96 @@ class BaseChart(ABC):
         schema = self._edit_options.get(key, {})
         return schema.get("value", schema.get("default"))
 
+    # ── Theme-colour helpers ──────────────────────────────────────────────────
+
+    @staticmethod
+    def _chart_bg() -> str:
+        """Figure / axes background for the current OS theme."""
+        try:
+            from ui.palette import is_dark_mode, D_SURFACE2
+            return D_SURFACE2 if is_dark_mode() else "white"
+        except Exception:
+            return "white"
+
+    @staticmethod
+    def _text_color() -> str:
+        """Primary label / tick text colour for the current OS theme."""
+        try:
+            from ui.palette import is_dark_mode, D_TEXT
+            return D_TEXT if is_dark_mode() else "#334155"
+        except Exception:
+            return "#334155"
+
+    @staticmethod
+    def _spine_color() -> str:
+        """Axis spine colour for the current OS theme."""
+        try:
+            from ui.palette import is_dark_mode, D_BORDER
+            return D_BORDER if is_dark_mode() else "#CBD5E1"
+        except Exception:
+            return "#CBD5E1"
+
+    @staticmethod
+    def _grid_color() -> str:
+        """Gridline colour for the current OS theme."""
+        try:
+            from ui.palette import is_dark_mode, D_BORDER
+            return D_BORDER if is_dark_mode() else "#E2E8F0"
+        except Exception:
+            return "#E2E8F0"
+
+    @staticmethod
+    def _title_color() -> str:
+        """Axes / figure title colour for the current OS theme."""
+        try:
+            from ui.palette import is_dark_mode, D_BRIGHT
+            return D_BRIGHT if is_dark_mode() else "#0F172A"
+        except Exception:
+            return "#0F172A"
+
     # ── Shared rendering helpers ──────────────────────────────────────────────
 
     @staticmethod
-    def _apply_figure_style(fig: Figure, ax) -> None:
-        """Apply consistent styling: spine colour, grid, font."""
+    def _apply_figure_style(fig: Figure, ax, *, grid: bool = True) -> None:
+        """Apply consistent theme-aware styling: spine colour, grid, font.
+
+        Parameters
+        ----------
+        grid : bool
+            Set False for charts that supply their own grid or cell borders
+            (e.g. heatmap, correlogram) so the y-grid is not drawn on top.
+        """
+        try:
+            from ui.palette import is_dark_mode, D_SURFACE2, D_BORDER, D_TEXT, D_BRIGHT
+            dark = is_dark_mode()
+        except Exception:
+            dark = False
+
+        if dark:
+            bg         = D_SURFACE2
+            spine_c    = D_BORDER
+            text_c     = D_TEXT
+            title_c    = D_BRIGHT
+            grid_c     = D_BORDER
+        else:
+            bg         = "white"
+            spine_c    = "#CBD5E1"
+            text_c     = "#334155"
+            title_c    = "#0F172A"
+            grid_c     = "#E2E8F0"
+
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
-        ax.spines["left"].set_color("#CBD5E1")
-        ax.spines["bottom"].set_color("#CBD5E1")
-        ax.tick_params(colors="#334155", labelsize=10)
-        ax.xaxis.label.set_color("#334155")
-        ax.yaxis.label.set_color("#334155")
-        ax.title.set_color("#0F172A")
-        ax.grid(axis="y", color="#E2E8F0", linewidth=0.8, zorder=0)
-        fig.patch.set_facecolor("white")
-        ax.set_facecolor("white")
+        ax.spines["left"].set_color(spine_c)
+        ax.spines["bottom"].set_color(spine_c)
+        ax.tick_params(colors=text_c, labelsize=10)
+        ax.xaxis.label.set_color(text_c)
+        ax.yaxis.label.set_color(text_c)
+        ax.title.set_color(title_c)
+        if grid:
+            ax.grid(axis="y", color=grid_c, linewidth=0.8, zorder=0)
+        fig.patch.set_facecolor(bg)
+        ax.set_facecolor(bg)
 
     @staticmethod
     def _large_data_sample(df: pd.DataFrame, limit: int = 50_000) -> tuple[pd.DataFrame, bool]:
@@ -251,4 +325,5 @@ class BaseChart(ABC):
             y=y,
             x=x_pos,
             ha=ha,
+            color=self._title_color(),
         )

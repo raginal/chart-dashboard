@@ -6,8 +6,6 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 from typing import Optional
 
-from ui.palette import GREY_200
-
 
 class ConsolidateDialog(QDialog):
     """
@@ -115,7 +113,7 @@ class ConsolidateDialog(QDialog):
         sep_h = QFrame()
         sep_h.setFrameShape(QFrame.Shape.HLine)
         sep_h.setFrameShadow(QFrame.Shadow.Plain)
-        sep_h.setStyleSheet(f"color: {GREY_200};")
+        sep_h.setObjectName("sep")
         layout.addWidget(sep_h)
 
         # ── Close button ──────────────────────────────────────────────────────

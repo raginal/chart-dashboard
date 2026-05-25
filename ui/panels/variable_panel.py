@@ -33,7 +33,7 @@ from core.transformer import TransformType
 from core.chart_config import VariableSelection
 from core.consolidator import ResponseConsolidator
 from ui.dialogs.consolidate_dialog import ConsolidateDialog
-from ui.palette import PRIMARY, GREY_200, GREY_500
+from ui.palette import PRIMARY
 
 DEBOUNCE_MS = 300
 
@@ -107,7 +107,7 @@ class VariableSlot(QWidget):
         lbl.setFixedWidth(self._LABEL_W)
         lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         lbl.setToolTip(self._SLOT_TIPS.get(self._slot_name, ""))
-        lbl.setStyleSheet(f"color: {GREY_500}; font-size: 11px; font-weight: 600;")
+        lbl.setObjectName("slot_label")
         row1.addWidget(lbl)
 
         self.var_combo = QComboBox()
@@ -335,13 +335,13 @@ class VariablePanel(QWidget):
 
         instr = QLabel("Select variables below. Charts update automatically.")
         instr.setWordWrap(True)
-        instr.setStyleSheet(f"color: {GREY_500}; font-size: 11px; padding: 2px 0 6px 0;")
+        instr.setObjectName("instr_label")
         top_bar.addWidget(instr, 1)
 
         self._clear_all_btn = QPushButton("Clear All")
         self._clear_all_btn.setMinimumWidth(70)
         self._clear_all_btn.setMaximumHeight(24)
-        self._clear_all_btn.setStyleSheet("font-size: 11px; padding: 2px 8px;")
+        self._clear_all_btn.setObjectName("small_btn")
         self._clear_all_btn.setToolTip("Reset all variable selections and transforms to None")
         self._clear_all_btn.clicked.connect(self.clear_all)
         top_bar.addWidget(self._clear_all_btn)
@@ -350,7 +350,7 @@ class VariablePanel(QWidget):
 
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.HLine)
-        sep.setStyleSheet(f"color: {GREY_200};")
+        sep.setObjectName("sep")
         g_layout.addWidget(sep)
 
         # Create the 3 slots
@@ -364,7 +364,7 @@ class VariablePanel(QWidget):
             if key != "group":
                 line = QFrame()
                 line.setFrameShape(QFrame.Shape.HLine)
-                line.setStyleSheet(f"color: {GREY_200};")
+                line.setObjectName("sep")
                 g_layout.addWidget(line)
 
         outer.addWidget(group)

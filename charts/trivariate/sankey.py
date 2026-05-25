@@ -53,7 +53,8 @@ class Sankey(BaseChart):
         ax.set_xlim(0, 1)
         ax.set_ylim(0, 1)
         ax.axis("off")
-        fig.patch.set_facecolor("white")
+        ax.set_facecolor(self._chart_bg())
+        fig.patch.set_facecolor(self._chart_bg())
 
         x_col   = selection.x_var
         y_col   = selection.y_var

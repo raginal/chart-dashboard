@@ -217,5 +217,5 @@ class TileMap(BaseChart):
         title = self._opt("title") or f"{y_label} by State ({agg_label})"
         self._apply_title(ax, title, pad=12)
 
-        fig.patch.set_facecolor("white")
+        fig.patch.set_facecolor(self._chart_bg())
         fig.tight_layout()

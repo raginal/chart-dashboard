@@ -91,7 +91,7 @@ class Heatmap(BaseChart):
         ax.set_xlabel(x_label)
         ax.set_ylabel(y_label)
         self._apply_title(ax, self._opt("title") or "Heatmap")
+        self._apply_figure_style(fig, ax, grid=False)
         ax.tick_params(axis='x', rotation=45, labelsize=8)
         ax.tick_params(axis='y', rotation=0,  labelsize=8)
-        fig.patch.set_facecolor("white")
         fig.tight_layout()

@@ -41,7 +41,7 @@ from core.chart_config import VariableSelection
 from ui.panels.file_panel import FilePanel
 from ui.panels.variable_panel import VariablePanel
 from ui.panels.chart_dashboard import ChartDashboard
-from ui.palette import WARN_BG, WARN_TEXT, GREY_50, GREY_200
+from ui.palette import WARN_BG, WARN_TEXT
 
 ROW_WARN_THRESHOLD   = 100_000
 LEFT_PANEL_MIN_WIDTH = 380
@@ -103,7 +103,6 @@ class MainWindow(QMainWindow):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setStyleSheet(f"background: {GREY_50};")
 
         scroll_content = QWidget()
         scroll_layout  = QVBoxLayout(scroll_content)

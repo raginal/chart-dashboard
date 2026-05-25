@@ -77,7 +77,7 @@ class Correlogram(BaseChart):
             cbar_kws={"shrink": 0.8},
         )
         self._apply_title(ax, self._opt("title") or "Correlation Matrix")
+        self._apply_figure_style(fig, ax, grid=False)
         ax.tick_params(axis='x', rotation=45, labelsize=9)
         ax.tick_params(axis='y', rotation=0,  labelsize=9)
-        fig.patch.set_facecolor("white")
         fig.tight_layout()

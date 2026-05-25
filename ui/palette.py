@@ -57,6 +57,24 @@ D_WARN_BG     = "#451A03"
 D_WARN_TEXT   = "#FDE68A"
 D_WARN_BORDER = "#92400E"
 
+# ── Theme detection ────────────────────────────────────────────────────────
+def is_dark_mode() -> bool:
+    """Return True when the app is currently running in dark mode.
+
+    Safe to call from chart render() methods (lazy Qt import, returns False
+    when no QApplication is running, e.g. in unit tests).
+    """
+    try:
+        from PyQt6.QtWidgets import QApplication
+        from PyQt6.QtCore import Qt
+        app = QApplication.instance()
+        if app is None:
+            return False
+        return app.styleHints().colorScheme() == Qt.ColorScheme.Dark
+    except Exception:
+        return False
+
+
 # ── Matplotlib / chart palette ──────────────────────────────────────────────
 # Named seaborn/matplotlib palettes available in the chart edit dialog.
 MPL_DEFAULT_PALETTE  = "tab10"      # categorical default (distinct hues)
@@ -394,6 +412,32 @@ QMenu::item:checked {{
 /* ── Dialog group separator — objectName="sep" ── */
 QFrame#sep {{
     color: {GREY_200};
+}}
+
+/* ── Secondary / muted labels (set via setObjectName) ── */
+QLabel#secondary_label {{
+    color: {GREY_500};
+    font-size: 12px;
+}}
+QLabel#slot_label {{
+    color: {GREY_500};
+    font-size: 11px;
+    font-weight: 600;
+}}
+QLabel#instr_label {{
+    color: {GREY_500};
+    font-size: 11px;
+    padding: 2px 0 6px 0;
+}}
+QLabel#placeholder_label {{
+    color: {GREY_400};
+    font-size: 14px;
+    padding: 40px;
+}}
+QPushButton#small_btn {{
+    font-size: 11px;
+    padding: 2px 8px;
+    min-height: 22px;
 }}
 """
 
@@ -751,5 +795,31 @@ QMenu::item:checked {{
 /* ── Dialog group separator — objectName="sep" ── */
 QFrame#sep {{
     color: {D_BORDER};
+}}
+
+/* ── Secondary / muted labels (set via setObjectName) ── */
+QLabel#secondary_label {{
+    color: {D_SECONDARY};
+    font-size: 12px;
+}}
+QLabel#slot_label {{
+    color: {D_SECONDARY};
+    font-size: 11px;
+    font-weight: 600;
+}}
+QLabel#instr_label {{
+    color: {D_SECONDARY};
+    font-size: 11px;
+    padding: 2px 0 6px 0;
+}}
+QLabel#placeholder_label {{
+    color: {D_SECONDARY};
+    font-size: 14px;
+    padding: 40px;
+}}
+QPushButton#small_btn {{
+    font-size: 11px;
+    padding: 2px 8px;
+    min-height: 22px;
 }}
 """

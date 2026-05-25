@@ -33,7 +33,6 @@ from core.chart_selector import ChartSelector
 from core.variable_classifier import VariableType
 from core.exporter import Exporter
 from ui.dialogs.chart_edit_dialog import ChartEditDialog
-from ui.palette import GREY_400, GREY_500, GREY_50
 
 
 class ChartTabPane(QWidget):
@@ -64,7 +63,7 @@ class ChartTabPane(QWidget):
         top_bar = QHBoxLayout()
 
         chart_label = QLabel("Chart:")
-        chart_label.setStyleSheet(f"color: {GREY_500}; font-size: 12px;")
+        chart_label.setObjectName("secondary_label")
         top_bar.addWidget(chart_label)
 
         self.chart_combo = QComboBox()
@@ -74,7 +73,7 @@ class ChartTabPane(QWidget):
 
         # Variable picker — only shown for univariate tab when >1 numeric var
         self._var_picker_label = QLabel("Variable:")
-        self._var_picker_label.setStyleSheet(f"color: {GREY_500}; font-size: 12px;")
+        self._var_picker_label.setObjectName("secondary_label")
         self._var_picker_label.setVisible(False)
         top_bar.addWidget(self._var_picker_label)
 
@@ -120,9 +119,7 @@ class ChartTabPane(QWidget):
         self.placeholder = QLabel(dim_hints.get(self._dimensionality, "Select variables."))
         self.placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.placeholder.setWordWrap(True)
-        self.placeholder.setStyleSheet(
-            f"color: {GREY_400}; font-size: 14px; background: {GREY_50}; padding: 40px;"
-        )
+        self.placeholder.setObjectName("placeholder_label")
         self.placeholder.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout.addWidget(self.placeholder)
 

@@ -130,7 +130,7 @@ class MosaicPlot(BaseChart):
 
         self._apply_title(ax, title)
 
-        fig.patch.set_facecolor("white")
+        fig.patch.set_facecolor(self._chart_bg())
         try:
             fig.tight_layout()
         except Exception:

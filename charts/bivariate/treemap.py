@@ -79,5 +79,5 @@ class Treemap(BaseChart):
                       alpha=0.85, ax=ax, text_kwargs={"fontsize": 8, "wrap": True})
         ax.set_axis_off()
         self._apply_title(ax, self._opt("title") or f"{y_col} by {x_col}")
-        fig.patch.set_facecolor("white")
+        fig.patch.set_facecolor(self._chart_bg())
         fig.tight_layout()
