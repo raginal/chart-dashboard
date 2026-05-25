@@ -236,7 +236,7 @@ class SlopeGraph(BaseChart):
         y_max  = max(y_all)
         nudged = self._nudge_labels(y_right, y_min, y_max, label_size)
 
-        text_x = 1.0 + dot_size * 0.012 + 0.004   # flush right of the dot
+        text_x = 1.0 + dot_size * 0.006 + 0.002   # flush right of the dot
 
         for entity, yr_raw, yr_nudged in zip(entities, y_right, nudged):
             ax.text(text_x, yr_nudged, str(entity),
