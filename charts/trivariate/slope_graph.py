@@ -58,7 +58,6 @@ class SlopeGraph(BaseChart):
                                  "group": "axes"},
             "date_end":         {"label": "End date (override)",      "type": "text", "default": "",
                                  "group": "axes"},
-            "show_left_labels": {"label": "Show left-side values",    "type": "bool", "default": False},
             "gridlines":        {"label": "Show gridlines",           "type": "bool", "default": False},
             "label_size":       {"label": "Label font size",          "type": "text", "default": "9"},
             **BaseChart._title_style_options(),
@@ -221,8 +220,6 @@ class SlopeGraph(BaseChart):
             label_size = float(self._opt("label_size") or 9)
         except (TypeError, ValueError):
             label_size = 9.0
-        show_left_labels = bool(self._opt("show_left_labels"))
-
         # ── Draw lines and dots ───────────────────────────────────────────────
         for yl, yr in zip(y_left, y_right):
             ax.plot([0, 1], [yl, yr], color=line_color, linewidth=lw,
@@ -239,22 +236,12 @@ class SlopeGraph(BaseChart):
         y_max  = max(y_all)
         nudged = self._nudge_labels(y_right, y_min, y_max, label_size)
 
-        text_x = 1.0 + dot_size * 0.012 + 0.015   # a little right of the dot
+        text_x = 1.0 + dot_size * 0.012 + 0.004   # flush right of the dot
 
         for entity, yr_raw, yr_nudged in zip(entities, y_right, nudged):
             ax.text(text_x, yr_nudged, str(entity),
                     va="center", ha="left", fontsize=label_size,
                     color=self._text_color())
-
-        # ── Optional left-side value annotations ──────────────────────────────
-        if show_left_labels:
-            nudged_left = self._nudge_labels(y_left, y_min, y_max, label_size)
-            left_text_x = 0.0 - dot_size * 0.012 - 0.015
-            for yl_raw, yl_nudged in zip(y_left, nudged_left):
-                ax.text(left_text_x, yl_nudged,
-                        f"{yl_raw:,.4g}",
-                        va="center", ha="right", fontsize=label_size,
-                        color=self._text_color())
 
         # ── Column header labels (at top of each pole) ────────────────────────
         span_days = (date_right - date_left).days
