@@ -184,8 +184,6 @@ class FacetedHistogram(BaseChart):
             ax.tick_params(colors=self._text_color(), labelsize=8,
                            labelleft=is_leftmost, labelbottom=is_bottom_row)
             ax.set_facecolor(self._chart_bg())
-            if is_leftmost:
-                ax.set_ylabel(self._opt("y_label") or "Count", fontsize=7, color=self._text_color())
 
         # Hide unused panels
         for idx in range(len(facets), nrows * ncols):
@@ -218,10 +216,12 @@ class FacetedHistogram(BaseChart):
         y_col   = selection.y_var
         title   = self._opt("title") or f"Distribution of {auto_x_label} by {y_col}"
 
-        fig.tight_layout(rect=[0.0, 0.04, 1.0, 0.93])
+        y_label = self._opt("y_label") or "Count"
+        fig.tight_layout(rect=[0.03, 0.04, 1.0, 0.93])
         if is_date:
             # Rotate date tick labels on bottom-row panels after layout is finalised
             fig.autofmt_xdate(rotation=30, ha='right')
         self._apply_suptitle(fig, title)
         fig.supxlabel(x_label, fontsize=10, y=0.01, color=self._text_color())
+        fig.supylabel(y_label, fontsize=10, x=0.0, color=self._text_color())
         fig.patch.set_facecolor(self._chart_bg())
