@@ -362,8 +362,6 @@ if _any_categorical:
     uni.append(ChartSpec("my_chart", "univariate", "My Chart"))
 ```
 
-That's it. No other files need changing.
-
 ### Inherited helpers in BaseChart
 
 | Method | What it does |
@@ -413,38 +411,86 @@ PALETTE_CHOICES     = ["tab10", "tab20", "Blues", ...]  # shown in Edit dialog
 
 ### Adding a custom colour palette
 
-Palette choices shown in the Quick Edit dialog are driven by the `PALETTE_CHOICES` list in `ui/palette.py`. Any named matplotlib / seaborn palette string can be added.
+The Quick Edit dropdown is driven by the `PALETTE_CHOICES` list in `ui/palette.py`. To make a new palette available to every chart, register it there and restart the app — no other files need changing.
 
-**Discrete (categorical) palettes** — good for grouping variables with distinct hues:
+#### Option A — Use a built-in matplotlib name
+
+Any named matplotlib colormap works as-is. Just append its string name to `PALETTE_CHOICES`:
 
 ```python
-# Qualitative palettes — add to PALETTE_CHOICES in ui/palette.py
+# ui/palette.py — append to the existing list
 PALETTE_CHOICES = [
-    "tab10",    # 10 distinct colours (default)
-    "tab20",    # 20 distinct colours
-    "Set1",     # bold primary hues
-    "Set2",     # softer pastels
-    "Set3",     # light pastels
-    "Paired",   # paired hues (ideal for before/after)
-    # ↓ add your own here:
-    "Dark2",    # dark, print-safe
-    "Accent",   # accented with grey
+    "tab10", "tab20", ...   # existing entries
+    "Dark2",                # ← built-in qualitative (dark, print-safe)
+    "cividis",              # ← built-in sequential (colour-blind safe)
+    "PiYG",                 # ← built-in diverging
 ]
 ```
 
-**Continuous (sequential / diverging) palettes** — good for numeric Z-axis gradients and choropleth maps:
+Browse available names at [matplotlib.org/stable/gallery/color/colormap_reference.html](https://matplotlib.org/stable/gallery/color/colormap_reference.html).
+
+#### Option B — Define a custom discrete (categorical) palette
+
+Register a `ListedColormap` from a list of hex colours, then add its name to `PALETTE_CHOICES`:
 
 ```python
-# Sequential / diverging — add to PALETTE_CHOICES in ui/palette.py
-PALETTE_CHOICES += [
-    "Blues",    "Greens",  "Reds",    "Oranges",  # single-hue sequential
-    "viridis",  "plasma",  "inferno", "magma",     # perceptually uniform
-    "cividis",                                      # colour-blind safe
-    "RdBu_r",  "coolwarm", "PiYG",                 # diverging (centre = neutral)
+# ui/palette.py
+import matplotlib.colors as mcolors
+import matplotlib.cm as cm
+
+# 1. Define your colours
+_MY_PALETTE_COLORS = [
+    "#E63946",  # red
+    "#457B9D",  # steel blue
+    "#2A9D8F",  # teal
+    "#E9C46A",  # yellow
+    "#F4A261",  # orange
+    "#264653",  # dark slate
+]
+
+# 2. Build and register the colormap
+_my_cmap = mcolors.ListedColormap(_MY_PALETTE_COLORS, name="my_palette")
+cm.register_cmap(name="my_palette", cmap=_my_cmap)
+
+# 3. Add to the picker list
+PALETTE_CHOICES = [
+    "tab10", "tab20", ...   # existing entries
+    "my_palette",           # ← appears in Quick Edit dropdown
 ]
 ```
 
-After editing `PALETTE_CHOICES`, restart the app — the new option will appear in every chart's **Colour palette** or **Z-Axis palette** Quick Edit dropdown automatically. No other files need changing.
+#### Option C — Define a custom continuous (sequential / diverging) palette
+
+Register a `LinearSegmentedColormap` from two or more anchor colours:
+
+```python
+# ui/palette.py
+import matplotlib.colors as mcolors
+import matplotlib.cm as cm
+
+# 1. Define anchor colours (left → right = low → high)
+_my_seq_cmap = mcolors.LinearSegmentedColormap.from_list(
+    "my_seq",
+    ["#EFF6FF", "#2563EB"],   # light blue → primary blue
+)
+cm.register_cmap(name="my_seq", cmap=_my_seq_cmap)
+
+# Diverging example (low → neutral → high)
+_my_div_cmap = mcolors.LinearSegmentedColormap.from_list(
+    "my_div",
+    ["#DC2626", "#F8FAFC", "#2563EB"],   # red → white → blue
+)
+cm.register_cmap(name="my_div", cmap=_my_div_cmap)
+
+# 2. Add to the picker list
+PALETTE_CHOICES = [
+    "tab10", ...   # existing entries
+    "my_seq",      # ← sequential
+    "my_div",      # ← diverging
+]
+```
+
+Both `ListedColormap` and `LinearSegmentedColormap` are supported by every chart that calls `plt.cm.get_cmap(palette)`.
 
 ### Large data handling
 
