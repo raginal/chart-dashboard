@@ -76,9 +76,9 @@ class BoxPlot(BaseChart):
         if vtype == VariableType.DATE:
             self._apply_date_fmt(ax, 'y')
         x_label = self._opt("x_label") or VariableTransformer.axis_label(col, selection.x_transform())
-        ax.set_xlabel(x_label)
-        ax.set_ylabel("Value")
         ax.set_xticklabels([x_label])
+        ax.set_xlabel("")
+        ax.set_ylabel("Value")
         self._apply_title(ax, self._opt("title") or f"Box Plot — {col}")
 
     def _render_grouped(self, df, ax, x_col, y_col, selection):
@@ -126,7 +126,7 @@ class BoxPlot(BaseChart):
         max_len  = max((len(str(l)) for l in labels), default=0)
         # Rotate only when labels would likely overlap: product of count × longest
         # label > 80, or too many categories regardless of label length.
-        rotate   = (n * max_len) > 80 or n > 12
+        rotate   = (n * max_len) > 120 or n > 16
         ax.set_xticklabels(
             labels,
             rotation=45 if rotate else 0,

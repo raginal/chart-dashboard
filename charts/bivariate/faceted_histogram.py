@@ -137,6 +137,8 @@ class FacetedHistogram(BaseChart):
         for idx, facet in enumerate(facets):
             row, col = divmod(idx, ncols)
             ax = axes[row][col]
+            is_leftmost  = (col == 0)
+            is_bottom_row = (idx + ncols >= len(facets))
             mask   = sub[fac_col] == facet
             x_vals = sub.loc[mask, x_col]
 
@@ -162,8 +164,8 @@ class FacetedHistogram(BaseChart):
                 n_cats = len(all_cats)
                 ax.set_xticklabels(
                     all_cats,
-                    rotation=45 if n_cats > 5 else 0,
-                    ha='right' if n_cats > 5 else 'center',
+                    rotation=45 if n_cats > 8 else 0,
+                    ha='right' if n_cats > 8 else 'center',
                     fontsize=max(6, 8 - max(n_cats - 5, 0)),
                 )
 
@@ -173,9 +175,11 @@ class FacetedHistogram(BaseChart):
             ax.spines["right"].set_visible(False)
             ax.spines["left"].set_color(self._spine_color())
             ax.spines["bottom"].set_color(self._spine_color())
-            ax.tick_params(colors=self._text_color(), labelsize=8)
+            ax.tick_params(colors=self._text_color(), labelsize=8,
+                           labelleft=is_leftmost, labelbottom=is_bottom_row)
             ax.set_facecolor(self._chart_bg())
-            ax.set_ylabel(self._opt("y_label") or "Count", fontsize=7, color=self._text_color())
+            if is_leftmost:
+                ax.set_ylabel(self._opt("y_label") or "Count", fontsize=7, color=self._text_color())
 
         # Hide unused panels
         for idx in range(len(facets), nrows * ncols):

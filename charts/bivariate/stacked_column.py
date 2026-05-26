@@ -70,7 +70,7 @@ class StackedColumn(BaseChart):
                     color=colors, legend=True, width=0.65)
 
         x_cats = counts.index.astype(str).tolist()
-        rotate = bool(self._opt("rotate_x")) or len(x_cats) > 8
+        rotate = bool(self._opt("rotate_x")) or len(x_cats) > 12
         ax.set_xticklabels(x_cats,
                            rotation=45 if rotate else 0,
                            ha='right' if rotate else 'center')

@@ -22,11 +22,10 @@ class StripChart(BaseChart):
 
     def _default_edit_options(self) -> dict:
         return {
-            "title":   {"label": "Title",       "type": "text", "default": ""},
+            "title":   {"label": "Title",        "type": "text", "default": ""},
             "x_label": {"label": "X-axis label", "type": "text", "default": ""},
             "color":   {"label": "Point colour", "type": "text", "default": MPL_ACCENT},
-            "alpha":   {"label": "Opacity (0–1)","type": "text", "default": "0.4"},
-            "jitter":  {"label": "Jitter amount","type": "text", "default": "0.35"},
+            "alpha":   {"label": "Opacity (0–1)", "type": "text", "default": "0.4"},
             **BaseChart._title_style_options(),
         }
 

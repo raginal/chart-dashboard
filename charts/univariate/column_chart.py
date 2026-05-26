@@ -78,7 +78,7 @@ class ColumnChart(BaseChart):
         ax.bar(x_pos, values, color=color, width=0.65, zorder=2)
         ax.set_xticks(x_pos)
 
-        rotate = bool(self._opt("rotate_x")) or n > 10
+        rotate = bool(self._opt("rotate_x")) or n > 14
         ax.set_xticklabels(
             labels,
             rotation=45 if rotate else 0,

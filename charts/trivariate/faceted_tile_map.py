@@ -8,8 +8,15 @@ are shown; when the data has more periods, the most recent ones are kept.
 
 All panels share a single colour scale and a single shared colorbar so that
 values are directly comparable across panels.
+
+Date grouping is by date component, collapsing across years:
+  Year    → panel per distinct year         (keys: 2020, 2021 …)
+  Quarter → panel per quarter number        (Q1 – Q4, merged across all years)
+  Month   → panel per month number          (Jan – Dec, merged across all years)
+  Week    → panel per ISO week number       (Wk 1 – Wk 52/53, merged across all years)
 """
 from __future__ import annotations
+import calendar
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -28,6 +35,33 @@ from charts.bivariate.tile_map import (
 )
 
 MAX_PANELS = 12
+
+# Labels for quarter / month — keyed by their integer code
+_QUARTER_LABELS = {1: "Q1", 2: "Q2", 3: "Q3", 4: "Q4"}
+_MONTH_LABELS   = {i: calendar.month_abbr[i] for i in range(1, 13)}
+
+
+def _period_key_series(dates: pd.Series, date_unit: str) -> pd.Series:
+    """Return an integer key series used to group rows into panels."""
+    if date_unit == "Year":
+        return dates.dt.year
+    if date_unit == "Quarter":
+        return dates.dt.quarter
+    if date_unit == "Month":
+        return dates.dt.month
+    # Week — ISO week number
+    return dates.dt.isocalendar().week.astype(int)
+
+
+def _key_to_label(key: int, date_unit: str) -> str:
+    """Human-readable panel title for a numeric period key."""
+    if date_unit == "Year":
+        return str(key)
+    if date_unit == "Quarter":
+        return _QUARTER_LABELS.get(key, f"Q{key}")
+    if date_unit == "Month":
+        return _MONTH_LABELS.get(key, str(key))
+    return f"Wk {key}"
 
 
 class FacetedTileMap(BaseChart):
@@ -83,23 +117,21 @@ class FacetedTileMap(BaseChart):
                     color="#94A3B8", fontsize=11, wrap=True)
             return
 
-        # ── Date grouping ─────────────────────────────────────────────────────
+        # ── Date grouping — by date component, collapsed across years ─────────
         date_unit = self._opt("date_unit") or "Year"
-        freq_map  = {"Year": "Y", "Quarter": "Q", "Month": "M", "Week": "W"}
-        freq      = freq_map.get(date_unit, "Y")
+        df_work["_period_key"] = _period_key_series(df_work[date_col], date_unit)
 
-        df_work["_period"] = df_work[date_col].dt.to_period(freq)
-        all_periods = sorted(df_work["_period"].unique())
-        if len(all_periods) > MAX_PANELS:
-            all_periods = all_periods[-MAX_PANELS:]  # keep most recent
+        all_keys = sorted(df_work["_period_key"].unique())
+        if len(all_keys) > MAX_PANELS:
+            all_keys = all_keys[-MAX_PANELS:]  # keep highest keys (most recent)
 
-        if not all_periods:
+        if not all_keys:
             ax = fig.add_subplot(111)
             ax.text(0.5, 0.5, "No date periods found in the data.",
                     ha='center', va='center', transform=ax.transAxes, color="#94A3B8")
             return
 
-        # ── Aggregate per (state, period) ─────────────────────────────────────
+        # ── Aggregate per (state, period key) ─────────────────────────────────
         agg_name = (self._opt("agg_func") or "Mean").lower()
         agg_map  = {
             "mean": "mean", "sum": "sum", "count": "count",
@@ -108,10 +140,10 @@ class FacetedTileMap(BaseChart):
         agg_func = agg_map.get(agg_name, "mean")
 
         state_period = (
-            df_work[df_work["_period"].isin(all_periods)]
-            .groupby([loc_col, "_period"])[val_col]
+            df_work[df_work["_period_key"].isin(all_keys)]
+            .groupby([loc_col, "_period_key"])[val_col]
             .agg(agg_func)
-        )  # MultiIndex Series: (state_abbrev, period) → value
+        )  # MultiIndex Series: (state_abbrev, period_key) → value
 
         # ── Global colour scale (shared across all panels) ────────────────────
         all_vals = state_period.values
@@ -128,7 +160,7 @@ class FacetedTileMap(BaseChart):
         norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
 
         # ── Layout ────────────────────────────────────────────────────────────
-        n_panels = len(all_periods)
+        n_panels = len(all_keys)
         try:
             ncols = max(1, min(int(self._opt("ncols") or 3), n_panels))
         except (TypeError, ValueError):
@@ -141,13 +173,13 @@ class FacetedTileMap(BaseChart):
         gap       = (1 - tile_size) / 2
 
         # ── Draw one tile map per panel ───────────────────────────────────────
-        for idx, period in enumerate(all_periods):
+        for idx, key in enumerate(all_keys):
             row, col_idx = divmod(idx, ncols)
             ax = axes[row][col_idx]
 
-            # State values for this period
+            # State values for this period key
             try:
-                sv: pd.Series = state_period.xs(period, level="_period")
+                sv: pd.Series = state_period.xs(key, level="_period_key")
             except KeyError:
                 sv = pd.Series(dtype=float)
 
@@ -183,7 +215,7 @@ class FacetedTileMap(BaseChart):
             ax.axis('off')
             ax.set_facecolor(self._chart_bg())
             ax.set_title(
-                self._fmt_period(period, freq),
+                _key_to_label(key, date_unit),
                 fontsize=9, fontweight='bold',
                 color=self._text_color(), pad=4,
             )
@@ -203,21 +235,8 @@ class FacetedTileMap(BaseChart):
         cb.set_label(f"{agg_lbl} of {y_label}", fontsize=9)
         cb.ax.tick_params(labelsize=8)
 
-        # ── Title ─────────────────────────────────────────────────────────────
+        # ── Title — enough top margin so suptitle does not overlap panels ─────
+        fig.subplots_adjust(top=0.88)
         title = self._opt("title") or f"{y_label} by State — by {date_unit}"
-        self._apply_suptitle(fig, title, fontsize=11)
+        self._apply_suptitle(fig, title, fontsize=11, y=0.96)
         fig.patch.set_facecolor(self._chart_bg())
-
-    # ── Helper ────────────────────────────────────────────────────────────────
-
-    @staticmethod
-    def _fmt_period(period, freq: str) -> str:
-        """Return a human-readable label for a pandas Period."""
-        if freq == "Y":
-            return str(period.year)
-        if freq == "Q":
-            return f"{period.year} Q{period.quarter}"
-        if freq == "M":
-            return period.start_time.strftime("%b %Y")
-        # Week
-        return period.start_time.strftime("Wk %b %-d, %Y")

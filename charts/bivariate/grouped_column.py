@@ -74,7 +74,7 @@ class GroupedColumn(BaseChart):
                    width=bar_width * 0.9, color=color, label=str(y_cat), zorder=2)
 
         ax.set_xticks(x_pos)
-        rotate = bool(self._opt("rotate_x")) or n_x > 8
+        rotate = bool(self._opt("rotate_x")) or n_x > 12
         ax.set_xticklabels(x_cats,
                            rotation=45 if rotate else 0,
                            ha='right' if rotate else 'center')
