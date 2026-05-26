@@ -89,6 +89,20 @@ class BaseChart(ABC):
             if key in opts:
                 schema["value"] = opts[key]
 
+    def reset_options(self, keys: list[str]) -> None:
+        """
+        Reset specific edit-option keys to their default by removing any
+        user-supplied value override.
+
+        Called by ChartDashboard when a variable slot changes so that stale
+        custom labels (title, x_label, y_label) don't persist after the user
+        picks a different column.  Keys that don't exist in this chart's schema
+        are silently ignored.
+        """
+        for key in keys:
+            if key in self._edit_options:
+                self._edit_options[key].pop("value", None)
+
     def _set_visible(self, key: str, visible: bool) -> None:
         """
         Show or hide one edit option in the Quick Edit dialog.

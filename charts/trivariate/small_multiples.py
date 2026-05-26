@@ -33,20 +33,22 @@ class SmallMultiples(BaseChart):
 
     def _default_edit_options(self) -> dict:
         return {
-            "title":       {"label": "Title",                     "type": "text",   "default": ""},
-            "chart_type":  {"label": "Sub-chart type",            "type": "choice", "default": "Scatter",
+            "title":       {"label": "Title",              "type": "text",   "default": ""},
+            "x_label":     {"label": "X-axis label",       "type": "text",   "default": ""},
+            "y_label":     {"label": "Y-axis label",       "type": "text",   "default": ""},
+            "chart_type":  {"label": "Sub-chart type",     "type": "choice", "default": "Scatter",
                             "choices": ["Scatter", "Line"]},
-            "palette":     {"label": "Colour palette",            "type": "choice", "default": MPL_DEFAULT_PALETTE,
+            "palette":     {"label": "Colour palette",     "type": "choice", "default": MPL_DEFAULT_PALETTE,
                             "choices": PALETTE_CHOICES},
-            "same_color":  {"label": "Same colour",               "type": "bool",   "default": True},
-            "shared_axes": {"label": "Shared axis ranges",        "type": "bool",   "default": True},
-            "ncols":       {"label": "Columns",                   "type": "text",   "default": "3"},
-            "sort_order":  {"label": "Facet order",               "type": "choice", "default": "Ascending",
+            "same_color":  {"label": "Same colour",        "type": "bool",   "default": True},
+            "shared_axes": {"label": "Shared axis ranges", "type": "bool",   "default": True},
+            "ncols":       {"label": "Columns",            "type": "text",   "default": "3"},
+            "sort_order":  {"label": "Facet order",        "type": "choice", "default": "Ascending",
                             "choices": ["Ascending", "Descending", "As-is"]},
             # Scatter-only options (hidden automatically when chart_type == "Line")
-            "trend_line":  {"label": "Trend line",   "type": "choice", "default": "None",
+            "trend_line":  {"label": "Trend line",         "type": "choice", "default": "None",
                             "choices": ["None", "Linear", "LOWESS", "Exponential"]},
-            "trend_color": {"label": "Trend colour", "type": "text",   "default": MPL_TREND},
+            "trend_color": {"label": "Trend colour",       "type": "text",   "default": MPL_TREND},
             **BaseChart._title_style_options(),
         }
 
@@ -174,8 +176,8 @@ class SmallMultiples(BaseChart):
             row, col = divmod(idx, ncols)
             axes[row][col].set_visible(False)
 
-        x_label = VariableTransformer.axis_label(x_col, selection.x_transform())
-        y_label = VariableTransformer.axis_label(y_col, selection.y_transform())
+        x_label = self._opt("x_label") or VariableTransformer.axis_label(x_col, selection.x_transform())
+        y_label = self._opt("y_label") or VariableTransformer.axis_label(y_col, selection.y_transform())
         title   = self._opt("title") or f"{y_col} vs {x_col} — faceted by {fac_col}"
 
         fig.tight_layout(rect=[0.03, 0.04, 1.0, 0.93])

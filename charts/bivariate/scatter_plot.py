@@ -26,10 +26,11 @@ class ScatterPlot(BaseChart):
 
     def _default_edit_options(self) -> dict:
         return {
-            "title":       {"label": "Title",               "type": "text",   "default": ""},
-            "x_label":     {"label": "X-axis label",         "type": "text",   "default": ""},
-            "y_label":     {"label": "Y-axis label",         "type": "text",   "default": ""},
+            "title":       {"label": "Title",            "type": "text",   "default": ""},
+            "x_label":     {"label": "X-axis label",     "type": "text",   "default": ""},
+            "y_label":     {"label": "Y-axis label",     "type": "text",   "default": ""},
             "color":       {"label": "Point colour",     "type": "text",   "default": MPL_ACCENT},
+            "dot_size":    {"label": "Dot size (pt)",    "type": "text",   "default": "4"},
             "palette":     {"label": "Z-Axis palette",   "type": "choice", "default": MPL_DEFAULT_PALETTE,
                             "choices": ["tab10", "tab20", "Set1", "Set2", "viridis", "plasma",
                                         "Blues", "Greens", "RdBu_r", "coolwarm"]},
@@ -63,12 +64,18 @@ class ScatterPlot(BaseChart):
                     ha='center', va='center', transform=ax.transAxes, color="#94A3B8")
             return
 
+        # ── Dot size ──────────────────────────────────────────────────────────
+        try:
+            dot_size = float(self._opt("dot_size") or 4)
+        except (TypeError, ValueError):
+            dot_size = 4.0
+
         # ── Draw scatter ──────────────────────────────────────────────────────
         if colour_var and colour_var in sub.columns:
-            self._scatter_by_colour(ax, sub, x_col, y_col, colour_var, fig)
+            self._scatter_by_colour(ax, sub, x_col, y_col, colour_var, fig, dot_size)
         else:
             color = self._opt("color") or MPL_ACCENT
-            ax.scatter(sub[x_col], sub[y_col], alpha=0.5, s=16,
+            ax.scatter(sub[x_col], sub[y_col], alpha=0.5, s=dot_size ** 2,
                        color=color, linewidths=0, zorder=3)
 
         # ── Trend line ────────────────────────────────────────────────────────
@@ -146,7 +153,8 @@ class ScatterPlot(BaseChart):
 
     # ── Colour-by helper ───────────────────────────────────────────────────────
 
-    def _scatter_by_colour(self, ax, sub, x_col, y_col, colour_var, fig):
+    def _scatter_by_colour(self, ax, sub, x_col, y_col, colour_var, fig,
+                           dot_size: float = 4.0):
         """Colour points by colour_var — categorical → legend, numeric → colorbar."""
         colour_series = sub[colour_var]
         colour_numeric = pd.to_numeric(colour_series, errors='coerce')
@@ -156,7 +164,8 @@ class ScatterPlot(BaseChart):
             palette = self._opt("palette") or "viridis"
             sc = ax.scatter(sub[x_col], sub[y_col],
                             c=colour_numeric.fillna(colour_numeric.median()),
-                            cmap=palette, alpha=0.6, s=16, linewidths=0, zorder=3)
+                            cmap=palette, alpha=0.6, s=dot_size ** 2,
+                            linewidths=0, zorder=3)
             cb = fig.colorbar(sc, ax=ax, shrink=0.8)
             cb.set_label(colour_var, fontsize=9)
         else:
@@ -173,8 +182,8 @@ class ScatterPlot(BaseChart):
             for cat, color in colors.items():
                 mask = colour_series == cat
                 ax.scatter(sub.loc[mask, x_col], sub.loc[mask, y_col],
-                           alpha=0.55, s=16, color=color, linewidths=0, zorder=3,
-                           label=str(cat))
+                           alpha=0.55, s=dot_size ** 2, color=color,
+                           linewidths=0, zorder=3, label=str(cat))
 
             ax.legend(
                 title=colour_var,

@@ -32,14 +32,15 @@ class StackedArea(BaseChart):
 
     def _default_edit_options(self) -> dict:
         return {
-            "title":    {"label": "Title",          "type": "text",   "default": ""},
-            "x_label":  {"label": "X-axis label",   "type": "text",   "default": ""},
-            "y_label":  {"label": "Y-axis label",   "type": "text",   "default": ""},
-            "agg_func": {"label": "Aggregate Y by", "type": "choice", "default": "Sum",
-                         "choices": ["Sum", "Mean"]},
-            "palette":  {"label": "Colour palette", "type": "choice", "default": MPL_DEFAULT_PALETTE,
-                         "choices": PALETTE_CHOICES},
-            "alpha":    {"label": "Fill opacity",   "type": "text",   "default": "0.75"},
+            "title":     {"label": "Title",           "type": "text",   "default": ""},
+            "x_label":   {"label": "X-axis label",    "type": "text",   "default": ""},
+            "y_label":   {"label": "Y-axis label",    "type": "text",   "default": ""},
+            "agg_func":  {"label": "Aggregate Y by",  "type": "choice", "default": "Sum",
+                          "choices": ["Sum", "Mean"]},
+            "normalize": {"label": "100% stacked",    "type": "bool",   "default": False},
+            "palette":   {"label": "Colour palette",  "type": "choice", "default": MPL_DEFAULT_PALETTE,
+                          "choices": PALETTE_CHOICES},
+            "alpha":     {"label": "Fill opacity",    "type": "text",   "default": "0.75"},
             **BaseChart._title_style_options(),
         }
 
@@ -86,6 +87,12 @@ class StackedArea(BaseChart):
                         xy=(0.01, 0.99), xycoords='axes fraction',
                         fontsize=7, color="#94A3B8", va='top')
 
+        # ── 100% normalisation ────────────────────────────────────────────────
+        normalize = bool(self._opt("normalize"))
+        if normalize:
+            row_totals = pivot.sum(axis=1).replace(0, np.nan)
+            pivot = pivot.div(row_totals, axis=0).fillna(0) * 100
+
         # ── Colours ───────────────────────────────────────────────────────────
         palette = self._opt("palette") or MPL_DEFAULT_PALETTE
         try:
@@ -107,15 +114,27 @@ class StackedArea(BaseChart):
         if x_type == VariableType.DATE:
             self._apply_date_fmt(ax, 'x', fig)
 
-        ax.set_ylim(bottom=0)
+        if normalize:
+            ax.set_ylim(0, 100)
+        else:
+            ax.set_ylim(bottom=0)
         ax.legend(loc='upper left', fontsize=8, framealpha=0.7,
                   title=z_col, title_fontsize=8)
 
         x_label = self._opt("x_label") or VariableTransformer.axis_label(x_col, selection.x_transform())
         y_label = self._opt("y_label") or VariableTransformer.axis_label(y_col, selection.y_transform())
         ax.set_xlabel(x_label)
-        ax.set_ylabel(f"{agg_func} of {y_label}")
-        self._apply_title(ax, self._opt("title") or f"{agg_func} of {y_col} over {x_col} by {z_col}")
+        if normalize:
+            ax.set_ylabel(f"% of {y_label}")
+        else:
+            ax.set_ylabel(f"{agg_func} of {y_label}")
+
+        default_title = (
+            f"% of {y_col} over {x_col} by {z_col}"
+            if normalize
+            else f"{agg_func} of {y_col} over {x_col} by {z_col}"
+        )
+        self._apply_title(ax, self._opt("title") or default_title)
 
         self._apply_figure_style(fig, ax)
         fig.tight_layout()

@@ -28,7 +28,9 @@ class ColumnChart(BaseChart):
 
     def _default_edit_options(self) -> dict:
         return {
-            "title":    {"label": "Title",          "type": "text",   "default": ""},
+            "title":    {"label": "Title",           "type": "text",   "default": ""},
+            "x_label":  {"label": "X-axis label",    "type": "text",   "default": ""},
+            "y_label":  {"label": "Y-axis label",    "type": "text",   "default": "Count"},
             "color":    {"label": "Bar colour",      "type": "text",   "default": MPL_ACCENT},
             "sort_by":  {"label": "Sort bars by",    "type": "choice", "default": "Count",
                          "choices": ["Count", "Value"]},
@@ -84,9 +86,9 @@ class ColumnChart(BaseChart):
             fontsize=max(6, 9 - max(n - 10, 0) // 4),
         )
 
-        x_label = VariableTransformer.axis_label(col, selection.x_transform())
+        x_label = self._opt("x_label") or VariableTransformer.axis_label(col, selection.x_transform())
         ax.set_xlabel(x_label)
-        ax.set_ylabel("Count")
+        ax.set_ylabel(self._opt("y_label") or "Count")
         self._apply_title(ax, self._opt("title") or f"Distribution — {x_label}")
 
         self._apply_figure_style(fig, ax)

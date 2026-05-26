@@ -23,7 +23,9 @@ class QQPlot(BaseChart):
 
     def _default_edit_options(self) -> dict:
         return {
-            "title":       {"label": "Title",        "type": "text", "default": ""},
+            "title":       {"label": "Title",         "type": "text", "default": ""},
+            "x_label":     {"label": "X-axis label",  "type": "text", "default": ""},
+            "y_label":     {"label": "Y-axis label",  "type": "text", "default": ""},
             "point_color": {"label": "Point colour",  "type": "text", "default": MPL_ACCENT},
             "line_color":  {"label": "Reference line","type": "text", "default": MPL_TREND},
             **BaseChart._title_style_options(),
@@ -61,8 +63,8 @@ class QQPlot(BaseChart):
         if vtype == VariableType.DATE:
             self._apply_date_fmt(ax, 'y')
         x_label = VariableTransformer.axis_label(col, selection.x_transform())
-        ax.set_xlabel("Theoretical quantiles (Normal)")
-        ax.set_ylabel(f"Sample quantiles — {x_label}")
+        ax.set_xlabel(self._opt("x_label") or "Theoretical quantiles (Normal)")
+        ax.set_ylabel(self._opt("y_label") or f"Sample quantiles — {x_label}")
         self._apply_title(ax, self._opt("title") or f"Q-Q Plot — {col}")
         self._apply_figure_style(fig, ax)
         if sampled:

@@ -24,7 +24,7 @@ A local Python desktop application for interactive chart exploration. Import a C
 
 **Requirements:** Python ≥ 3.13, macOS or Windows.
 
-Install dependencies (all are likely already present):
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
@@ -66,7 +66,7 @@ The left panel contains three named variable slots. Each slot has:
 |---|---|---|
 | **X-Axis** | ✓ | Independent variable — the horizontal axis |
 | **Y-Axis** | — | Dependent variable — the vertical axis |
-| **Z-Axis** | — | Third variable — used for faceting (Small Multiples, categorical or location Z), Stacked Area colour bands, Sankey flow sections (3-column), and scatter-plot colouring |
+| **Z-Axis** | — | Third variable — used for faceting (Small Multiples, categorical or location Z; Faceted Tile Map, date Z), Stacked Area colour bands, Sankey flow sections (3-column), Slope Graph entities, and scatter-plot colouring |
 
 **Minimum for charts:**
 - Univariate charts require any single variable selected
@@ -102,11 +102,11 @@ The auto-detection is a heuristic — always override if the result looks wrong.
 
 ---
 
-## 5. Transforms
+## 5. Transformations
 
 Click the **▼ Transform** button next to any variable to apply a mathematical transformation before charting. The column name is unchanged; axis labels will note the transformation (e.g. "Income (Natural Log)").
 
-| Transform | Formula | Common use |
+| Transformation | Formula | Common use |
 |---|---|---|
 | **None** | Identity | Default |
 | **Natural Log** | ln(x) | Normalise right-skewed data; removes outlier pull |
@@ -116,9 +116,9 @@ Click the **▼ Transform** button next to any variable to apply a mathematical 
 | **Lag 2 Periods** | shift(2) | |
 | **Lag 3 Periods** | shift(3) | |
 
-> **Available transforms depend on variable type:** Numeric → all transforms; Date → None + Lags 1–3 only; Categorical and Location → None only. The transform menu automatically shows only the valid options for the selected variable type.
+> **Available transforms depend on variable type:** Numeric → all transformations; Date → None + Lags 1–3 only; Categorical and Location → None only. The transform menu automatically shows only the valid options for the selected variable type.
 >
-> **Note:** Transforms that introduce NaN (log of zero/negative, lag at series edges) preserve row alignment — those rows will simply appear as missing in charts.
+> **Note:** Transformations that introduce NaN (log of zero/negative, lag at series edges) preserve row alignment — those rows will simply appear as missing in charts.
 
 ---
 
@@ -198,10 +198,10 @@ The **Variable:** picker in the Univariate tab lets you choose which selected va
 | **Heatmap** | Categorical / Location | Categorical / Location | Cell-level counts |
 | **Sankey Diagram** | Categorical / Location | Categorical / Location | 2-column flow (X → Y); gray node bars, coloured bezier flows |
 | **Mosaic Plot** | Categorical / Location | Categorical / Location | Proportional area; cells labelled with count & % |
-| **Scatter Plot** | Numeric / Date | Numeric / Date | Z-Axis colours points when set (categorical → legend, numeric → colorbar); date axes auto-formatted |
+| **Scatter Plot** | Numeric / Date | Numeric / Date | Z-Axis colours points when set (categorical → legend, numeric → colorbar); date axes auto-formatted. Dot size and trend lines (Linear / LOWESS / Exponential) configurable via Quick Edit. |
 | **Hexbin Plot** | Numeric / Date | Numeric / Date | Scatter for large datasets with many overlapping points; date axes auto-formatted |
 | **Correlogram** | Numeric | Numeric | Pairwise correlations across all numeric columns in the dataset |
-| **Line Plot** | Numeric / Date | Numeric | Trends over a continuous or time axis; when Z-Axis is also numeric it is drawn as a second dashed line |
+| **Line Plot** | Numeric / Date | Numeric | Trends over a continuous or time axis; optional trend line (Linear / LOWESS / Exponential) and confidence band. When Z-Axis is also numeric it is drawn as a second line. |
 | **Range Line Plot** | **Date** | Numeric | Seasonal context ribbon chart: shaded min–max band for the historical period, long-dashed line for the current period. Configurable range (5 yr / 10 yr / 1 yr / 1 mo) and optional average line. |
 | **Faceted Histogram** | Numeric / Date | Categorical / Location | Distribution of X in a separate panel per Y value |
 | **Faceted Column Chart** | Categorical | Categorical / Location | Bar chart of X counts in a separate panel per Y value |
@@ -212,13 +212,17 @@ The **Variable:** picker in the Univariate tab lets you choose which selected va
 | Chart | X type | Y type | Z type | Best for |
 |---|---|---|---|---|
 | **Sankey Diagram** | Categorical / Location | Categorical / Location | Any | 3-column flow (X → Y → Z); gray node bars, coloured bezier flows |
-| **Stacked Area Chart** | Numeric / Date | Numeric | Categorical / Location | Y (aggregated per Z group) stacked cumulatively over X; one colour band per Z value |
+| **Stacked Area Chart** | Numeric / Date | Numeric | Categorical / Location | Y (aggregated per Z group) stacked cumulatively over X; one colour band per Z value. Toggle **100% stacked** via Quick Edit for proportional view. |
 | **Small Multiples** | Numeric / Date | Numeric / Date | Categorical / Location | Scatter or Line panels of Y vs X, one panel per Z value |
-| **Line Plot** | Numeric / Date | Numeric | **Numeric** | Dual-line chart: Y drawn solid, Z drawn dashed; both share the X axis |
+| **Line Plot** | Numeric / Date | Numeric | Numeric | Dual-line chart: Y drawn solid, Z drawn dashed; both share the X axis |
+| **Slope Graph** | **Date** | Numeric | Categorical / Location | Change between two time points for a set of entities (Z defines each line) |
+| **Faceted Tile Map** | **Location** | Numeric | **Date** | One US tile map panel per date period (Year / Quarter / Month / Week); all panels share the same colour scale and legend |
 
-> **Scatter Plot Z-Axis colouring:** when Z-Axis is set, scatter points are coloured by that variable. Categorical / Location Z → distinct colours + legend. Numeric Z → viridis gradient + colour bar.
+> **Scatter Plot Z-Axis colouring:** when Z-Axis is set, scatter points are coloured by that variable. Categorical / Location Z → distinct colours + legend. Numeric Z → viridis gradient + colour bar. Dot size and trend lines (Linear / LOWESS / Exponential) are configurable via **Quick Edit**.
 >
 > **Small Multiples:** facet sort order (Ascending / Descending / As-is), sub-chart type (Scatter / Line), shared axis ranges, same-colour-across-panels, and (for Scatter) trend lines (Linear / LOWESS / Exponential) are all configurable via **Quick Edit**.
+>
+> **Line Plot (bivariate):** supports trend lines (Linear / LOWESS / Exponential) and confidence bands; configurable via **Quick Edit**.
 
 ---
 
@@ -236,7 +240,7 @@ Click **Quick Edit** to open the chart options dialog. The available options dep
 - **Bold title** — toggle bold on or off (default: on)
 - **Title alignment** — Center (default), Left, or Right
 
-Edit options **persist** when you change variables, so a title you set stays set even if you switch X-Axis columns.
+Edit options generally **persist** when you change variables, so colour or layout preferences you set stay set. However, **custom axis labels and chart titles are reset** when you change the variable they describe (changing X-Axis resets the X-axis label and title; changing Y-Axis resets the Y-axis label and title) — because the previous label would no longer match the new column.
 
 Click **Apply** to update the chart immediately.
 
@@ -270,8 +274,8 @@ chartBuilder/
 │   ├── base.py                # BaseChart abstract class
 │   ├── registry.py            # CHART_REGISTRY — only file to edit when adding a chart
 │   ├── univariate/            # 9 chart modules
-│   ├── bivariate/             # 11 chart modules (Box + Violin render bivariate from univariate/)
-│   └── trivariate/            # 5 chart modules
+│   ├── bivariate/             # 10 chart modules (Box + Violin also render bivariate from univariate/)
+│   └── trivariate/            # 7 chart modules
 │
 └── ui/
     ├── palette.py             # All colours + APP_STYLESHEET
@@ -406,6 +410,41 @@ MPL_ACCENT          = "#2563EB"
 MPL_TREND           = "#DC2626"
 PALETTE_CHOICES     = ["tab10", "tab20", "Blues", ...]  # shown in Edit dialog
 ```
+
+### Adding a custom colour palette
+
+Palette choices shown in the Quick Edit dialog are driven by the `PALETTE_CHOICES` list in `ui/palette.py`. Any named matplotlib / seaborn palette string can be added.
+
+**Discrete (categorical) palettes** — good for grouping variables with distinct hues:
+
+```python
+# Qualitative palettes — add to PALETTE_CHOICES in ui/palette.py
+PALETTE_CHOICES = [
+    "tab10",    # 10 distinct colours (default)
+    "tab20",    # 20 distinct colours
+    "Set1",     # bold primary hues
+    "Set2",     # softer pastels
+    "Set3",     # light pastels
+    "Paired",   # paired hues (ideal for before/after)
+    # ↓ add your own here:
+    "Dark2",    # dark, print-safe
+    "Accent",   # accented with grey
+]
+```
+
+**Continuous (sequential / diverging) palettes** — good for numeric Z-axis gradients and choropleth maps:
+
+```python
+# Sequential / diverging — add to PALETTE_CHOICES in ui/palette.py
+PALETTE_CHOICES += [
+    "Blues",    "Greens",  "Reds",    "Oranges",  # single-hue sequential
+    "viridis",  "plasma",  "inferno", "magma",     # perceptually uniform
+    "cividis",                                      # colour-blind safe
+    "RdBu_r",  "coolwarm", "PiYG",                 # diverging (centre = neutral)
+]
+```
+
+After editing `PALETTE_CHOICES`, restart the app — the new option will appear in every chart's **Colour palette** or **Z-Axis palette** Quick Edit dropdown automatically. No other files need changing.
 
 ### Large data handling
 

@@ -34,12 +34,13 @@ from charts.bivariate.treemap          import Treemap
 from charts.bivariate.tile_map         import TileMap
 
 # ── Trivariate ────────────────────────────────────────────────────────────────
-from charts.trivariate.sankey          import Sankey
-from charts.trivariate.mosaic_plot     import MosaicPlot
-from charts.trivariate.small_multiples import SmallMultiples
-from charts.trivariate.heatmap         import Heatmap
-from charts.trivariate.stacked_area    import StackedArea
-from charts.trivariate.slope_graph     import SlopeGraph
+from charts.trivariate.sankey           import Sankey
+from charts.trivariate.mosaic_plot      import MosaicPlot
+from charts.trivariate.small_multiples  import SmallMultiples
+from charts.trivariate.heatmap          import Heatmap
+from charts.trivariate.stacked_area     import StackedArea
+from charts.trivariate.slope_graph      import SlopeGraph
+from charts.trivariate.faceted_tile_map import FacetedTileMap
 
 
 # All registered chart classes — one entry per chart type
@@ -52,7 +53,7 @@ _ALL_CHART_CLASSES: list[type[BaseChart]] = [
     GroupedColumn, StackedColumn, ScatterPlot, Hexbin, Correlogram, LinePlot, RangeLinePlot,
     Treemap, TileMap,
     # Trivariate
-    Sankey, MosaicPlot, SmallMultiples, Heatmap, StackedArea, SlopeGraph,
+    Sankey, MosaicPlot, SmallMultiples, Heatmap, StackedArea, SlopeGraph, FacetedTileMap,
 ]
 
 CHART_REGISTRY: dict[str, type[BaseChart]] = {

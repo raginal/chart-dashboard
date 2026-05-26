@@ -1,4 +1,4 @@
-"""Line plot with optional confidence band (95% CI via bootstrapping or SEM)."""
+"""Line plot with optional confidence band (95% CI via bootstrapping or SEM) and trend line."""
 from __future__ import annotations
 import numpy as np
 import pandas as pd
@@ -8,7 +8,7 @@ from charts.base import BaseChart
 from core.chart_config import VariableSelection, ChartSpec
 from core.variable_classifier import VariableType
 from core.transformer import VariableTransformer
-from ui.palette import MPL_ACCENT, MPL_CONFIDENCE_BAND
+from ui.palette import MPL_ACCENT, MPL_CONFIDENCE_BAND, MPL_TREND
 
 
 class LinePlot(BaseChart):
@@ -22,14 +22,17 @@ class LinePlot(BaseChart):
 
     def _default_edit_options(self) -> dict:
         return {
-            "title":     {"label": "Title",              "type": "text", "default": ""},
-            "x_label":   {"label": "X-axis label",        "type": "text", "default": ""},
-            "y_label":   {"label": "Y-axis label",        "type": "text", "default": ""},
-            "color":     {"label": "Y line colour",       "type": "text", "default": MPL_ACCENT},
-            "z_color":   {"label": "Z line colour",       "type": "text", "default": "#DC2626"},
-            "conf_band": {"label": "Confidence band",     "type": "bool", "default": False},
-            "markers":   {"label": "Show data markers",   "type": "bool", "default": False},
-            "sort_x":    {"label": "Sort by X",           "type": "bool", "default": True},
+            "title":       {"label": "Title",              "type": "text",   "default": ""},
+            "x_label":     {"label": "X-axis label",       "type": "text",   "default": ""},
+            "y_label":     {"label": "Y-axis label",       "type": "text",   "default": ""},
+            "color":       {"label": "Y line colour",      "type": "text",   "default": MPL_ACCENT},
+            "z_color":     {"label": "Z line colour",      "type": "text",   "default": "#DC2626"},
+            "conf_band":   {"label": "Confidence band",    "type": "bool",   "default": False},
+            "markers":     {"label": "Show data markers",  "type": "bool",   "default": False},
+            "sort_x":      {"label": "Sort by X",          "type": "bool",   "default": True},
+            "trend_line":  {"label": "Trend line",         "type": "choice", "default": "None",
+                            "choices": ["None", "Linear", "LOWESS", "Exponential"]},
+            "trend_color": {"label": "Trend colour",       "type": "text",   "default": MPL_TREND},
             **BaseChart._title_style_options(),
         }
 
@@ -102,6 +105,18 @@ class LinePlot(BaseChart):
                     marker=marker, markersize=5, alpha=0.85, label=z_col)
             ax.legend(fontsize=9, framealpha=0.8, loc='best')
 
+        # ── Trend line (applied to Y series) ─────────────────────────────────
+        trend       = self._opt("trend_line") or "None"
+        trend_color = self._opt("trend_color") or MPL_TREND
+
+        if trend != "None":
+            x_arr = sub[x_col].values.astype(float)
+            y_arr = sub[y_col].values.astype(float)
+            mask  = np.isfinite(x_arr) & np.isfinite(y_arr)
+            x_arr, y_arr = x_arr[mask], y_arr[mask]
+            if len(x_arr) >= 3:
+                self._draw_trend(ax, x_arr, y_arr, trend, trend_color)
+
         if x_type == VariableType.DATE:
             self._apply_date_fmt(ax, 'x', fig)
 
@@ -118,6 +133,51 @@ class LinePlot(BaseChart):
         self._apply_figure_style(fig, ax)
 
         # ── Edit dialog visibility ────────────────────────────────────────────
-        self._set_visible("z_color", z_is_line)
+        self._set_visible("z_color",     z_is_line)
+        self._set_visible("trend_color", (self._opt("trend_line") or "None") != "None")
 
         fig.tight_layout()
+
+    # ── Trend line helper ──────────────────────────────────────────────────────
+
+    def _draw_trend(self, ax, xv: np.ndarray, yv: np.ndarray,
+                    trend: str, color: str) -> None:
+        """Draw a trend line (Linear / LOWESS / Exponential) onto *ax*."""
+        try:
+            if trend == "Linear":
+                from scipy import stats
+                slope, intercept, r, p, _ = stats.linregress(xv, yv)
+                xs_fit = np.linspace(xv.min(), xv.max(), 200)
+                ax.plot(xs_fit, slope * xs_fit + intercept, color=color,
+                        linewidth=1.8, linestyle="--",
+                        label=f"r={r:.2f}, p={p:.3f}", zorder=4)
+                ax.legend(fontsize=9, framealpha=0.8)
+
+            elif trend == "LOWESS":
+                from statsmodels.nonparametric.smoothers_lowess import lowess
+                smoothed   = lowess(yv, xv, frac=0.4)
+                smoothed_s = smoothed[np.argsort(smoothed[:, 0])]
+                ax.plot(smoothed_s[:, 0], smoothed_s[:, 1], color=color,
+                        linewidth=1.8, linestyle="--", label="LOWESS", zorder=4)
+                ax.legend(fontsize=9, framealpha=0.8)
+
+            elif trend == "Exponential":
+                from scipy.optimize import curve_fit
+                x_shift    = xv.min()
+                xs_shifted = xv - x_shift
+                if (yv > 0).all():
+                    def _exp_func(x, a, b):
+                        return a * np.exp(b * x)
+                    popt, _ = curve_fit(_exp_func, xs_shifted, yv,
+                                        p0=[yv.mean(), 0.0], maxfev=5000)
+                    xs_fit = np.linspace(xs_shifted.min(), xs_shifted.max(), 200)
+                    ax.plot(xs_fit + x_shift, _exp_func(xs_fit, *popt),
+                            color=color, linewidth=1.8, linestyle="--",
+                            label="Exponential", zorder=4)
+                    ax.legend(fontsize=9, framealpha=0.8)
+                else:
+                    ax.text(0.02, 0.97, "Exponential fit requires all Y > 0",
+                            transform=ax.transAxes, fontsize=8,
+                            color=color, va='top')
+        except Exception:
+            pass

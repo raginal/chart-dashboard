@@ -53,7 +53,7 @@ class MainWindow(QMainWindow):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("chartBuilder")
+        self.setWindowTitle("Chart Explorer")
         self.setMinimumSize(1100, 700)
         self.resize(1400, 850)
 

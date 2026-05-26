@@ -220,6 +220,10 @@ class ChartSelector:
             if _is_date(x_t) and _is_numeric(y_t) and _is_cat_like(z_t):
                 triv.append(ChartSpec("slope_graph", "trivariate", "Slope Graph"))
 
+            # ── location × numeric × date → Faceted Tile Map ──────────────────
+            if _is_location(x_t) and _is_numeric(y_t) and _is_date(z_t):
+                triv.append(ChartSpec("faceted_tile_map", "trivariate", "Faceted Tile Map"))
+
             if triv:
                 result["trivariate"] = triv
 

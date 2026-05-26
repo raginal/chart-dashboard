@@ -332,6 +332,8 @@ class ChartDashboard(QWidget):
         super().__init__(parent)
         # Shared dict of all instantiated chart objects (keyed by chart_id)
         self._chart_instances: dict[str, BaseChart] = {}
+        # Previous selection — used to detect slot changes and reset stale labels
+        self._prev_selection: Optional[VariableSelection] = None
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -363,6 +365,22 @@ class ChartDashboard(QWidget):
         applicable: dict[str, list[ChartSpec]],
     ) -> None:
         """Update all tabs with the new data and applicable chart lists."""
+        # ── Reset stale custom labels when a variable slot changes ────────────
+        # When X changes: clear title and x_label (column name is now different).
+        # When Y changes: clear title and y_label.
+        # Z changes don't reset labels — Z is not in the default title for most charts.
+        prev = self._prev_selection
+        if prev is not None:
+            keys_to_reset: set[str] = set()
+            if prev.x_var != selection.x_var:
+                keys_to_reset |= {"title", "x_label"}
+            if prev.y_var != selection.y_var:
+                keys_to_reset |= {"title", "y_label"}
+            if keys_to_reset:
+                for chart in self._chart_instances.values():
+                    chart.reset_options(list(keys_to_reset))
+        self._prev_selection = selection
+
         has_any = False
         first_active_dim = None
 
@@ -403,6 +421,7 @@ class ChartDashboard(QWidget):
 
     def clear(self) -> None:
         """Clear all tab panes (called when a new file is loaded)."""
+        self._prev_selection = None
         for pane in self.panes.values():
             pane.clear()
         self._set_tabs_enabled(False, False, False)

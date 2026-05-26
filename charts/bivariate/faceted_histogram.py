@@ -35,15 +35,17 @@ class FacetedHistogram(BaseChart):
 
     def _default_edit_options(self) -> dict:
         return {
-            "title":      {"label": "Title",                      "type": "text",   "default": ""},
-            "color":      {"label": "Bar colour",    "type": "text",   "default": MPL_ACCENT},
+            "title":      {"label": "Title",          "type": "text",   "default": ""},
+            "x_label":    {"label": "X-axis label",   "type": "text",   "default": ""},
+            "y_label":    {"label": "Y-axis label",   "type": "text",   "default": "Count"},
+            "color":      {"label": "Bar colour",     "type": "text",   "default": MPL_ACCENT},
             "palette":    {"label": "Colour palette", "type": "choice", "default": MPL_DEFAULT_PALETTE,
                            "choices": PALETTE_CHOICES},
             "ncols":      {"label": "Columns",        "type": "text",   "default": "3"},
             "num_bins":   {"label": "Bins",           "type": "text",   "default": "10"},
-            "sort_order": {"label": "Facet order",                "type": "choice", "default": "Ascending",
+            "sort_order": {"label": "Facet order",    "type": "choice", "default": "Ascending",
                            "choices": ["Ascending", "Descending", "As-is"]},
-            "shared_x":   {"label": "Shared X range",             "type": "bool",   "default": True},
+            "shared_x":   {"label": "Shared X range", "type": "bool",   "default": True},
             **BaseChart._title_style_options(),
         }
 
@@ -173,7 +175,7 @@ class FacetedHistogram(BaseChart):
             ax.spines["bottom"].set_color(self._spine_color())
             ax.tick_params(colors=self._text_color(), labelsize=8)
             ax.set_facecolor(self._chart_bg())
-            ax.set_ylabel("Count", fontsize=7, color=self._text_color())
+            ax.set_ylabel(self._opt("y_label") or "Count", fontsize=7, color=self._text_color())
 
         # Hide unused panels
         for idx in range(len(facets), nrows * ncols):
@@ -201,9 +203,10 @@ class FacetedHistogram(BaseChart):
         self._set_visible("palette",  not is_numeric)
         self._set_visible("shared_x", is_numeric)
 
-        x_label = VariableTransformer.axis_label(x_col, selection.x_transform())
+        auto_x_label = VariableTransformer.axis_label(x_col, selection.x_transform())
+        x_label = self._opt("x_label") or auto_x_label
         y_col   = selection.y_var
-        title   = self._opt("title") or f"Distribution of {x_label} by {y_col}"
+        title   = self._opt("title") or f"Distribution of {auto_x_label} by {y_col}"
 
         fig.tight_layout(rect=[0.0, 0.04, 1.0, 0.93])
         self._apply_suptitle(fig, title)
