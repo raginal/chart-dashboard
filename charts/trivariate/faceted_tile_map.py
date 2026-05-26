@@ -47,10 +47,8 @@ def _period_key_series(dates: pd.Series, date_unit: str) -> pd.Series:
         return dates.dt.year
     if date_unit == "Quarter":
         return dates.dt.quarter
-    if date_unit == "Month":
-        return dates.dt.month
-    # Week — ISO week number
-    return dates.dt.isocalendar().week.astype(int)
+    # Month
+    return dates.dt.month
 
 
 def _key_to_label(key: int, date_unit: str) -> str:
@@ -59,9 +57,8 @@ def _key_to_label(key: int, date_unit: str) -> str:
         return str(key)
     if date_unit == "Quarter":
         return _QUARTER_LABELS.get(key, f"Q{key}")
-    if date_unit == "Month":
-        return _MONTH_LABELS.get(key, str(key))
-    return f"Wk {key}"
+    # Month
+    return _MONTH_LABELS.get(key, str(key))
 
 
 class FacetedTileMap(BaseChart):
@@ -81,7 +78,7 @@ class FacetedTileMap(BaseChart):
             "agg_func":   {"label": "Aggregation",      "type": "choice", "default": "Mean",
                            "choices": ["Mean", "Sum", "Count", "Median", "Min", "Max"]},
             "date_unit":  {"label": "Date grouping",    "type": "choice", "default": "Year",
-                           "choices": ["Year", "Quarter", "Month", "Week"]},
+                           "choices": ["Year", "Quarter", "Month"]},
             "ncols":      {"label": "Columns",          "type": "text",   "default": "3"},
             "show_label": {"label": "Show state labels","type": "bool",   "default": True},
             **BaseChart._title_style_options(),
@@ -225,18 +222,24 @@ class FacetedTileMap(BaseChart):
             row, col_idx = divmod(idx, ncols)
             axes[row][col_idx].set_visible(False)
 
-        # ── Single shared colorbar ────────────────────────────────────────────
+        # ── Single shared colorbar — placed in reserved right margin ─────────
+        # Reserve space on the right for the colorbar so it never overlaps panels.
+        # subplots_adjust(right) leaves the panels in [0, right]; the colorbar
+        # axis occupies the strip just outside that boundary.
+        fig.subplots_adjust(right=0.80, top=0.88, hspace=0.4, wspace=0.25)
+        cbar_ax = fig.add_axes([0.83, 0.12, 0.03, 0.70])
+
         sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
         sm.set_array([])
-        y_label  = VariableTransformer.axis_label(val_col, selection.y_transform())
-        agg_lbl  = (self._opt("agg_func") or "Mean").capitalize()
-        ax_list  = [axes[r][c] for r in range(nrows) for c in range(ncols)]
-        cb = fig.colorbar(sm, ax=ax_list, shrink=0.6, pad=0.02, aspect=25)
-        cb.set_label(f"{agg_lbl} of {y_label}", fontsize=9)
-        cb.ax.tick_params(labelsize=8)
+        y_label = VariableTransformer.axis_label(val_col, selection.y_transform())
+        agg_lbl = (self._opt("agg_func") or "Mean").capitalize()
+        cb = fig.colorbar(sm, cax=cbar_ax)
+        cb.set_label(f"{agg_lbl} of {y_label}", fontsize=9,
+                     color=self._text_color())
+        cb.ax.tick_params(labelsize=8, colors=self._text_color())
+        cb.outline.set_edgecolor(self._spine_color())
 
-        # ── Title — enough top margin so suptitle does not overlap panels ─────
-        fig.subplots_adjust(top=0.88)
+        # ── Title — sits in the top margin above the panels ──────────────────
         title = self._opt("title") or f"{y_label} by State — by {date_unit}"
         self._apply_suptitle(fig, title, fontsize=11, y=0.96)
         fig.patch.set_facecolor(self._chart_bg())

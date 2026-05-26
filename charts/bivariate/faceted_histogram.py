@@ -100,7 +100,10 @@ class FacetedHistogram(BaseChart):
         # Detect X type and prepare data
         x_type     = selection.x_type()
         is_numeric = x_type in (VariableType.INTERVAL, VariableType.DATE)
-        x_numeric  = pd.to_numeric(sub[x_col], errors='coerce') if is_numeric else None
+        is_date    = x_type == VariableType.DATE
+        # Use _to_mpl_numeric so DATE columns are converted to matplotlib date
+        # float numbers rather than being coerced to NaN by pd.to_numeric.
+        x_numeric  = self._to_mpl_numeric(sub[x_col], x_type) if is_numeric else None
 
         # ── Colours ───────────────────────────────────────────────────────────
         # Histogram: single accent colour, same across all panels
@@ -143,7 +146,7 @@ class FacetedHistogram(BaseChart):
             x_vals = sub.loc[mask, x_col]
 
             if is_numeric:
-                x_num = pd.to_numeric(x_vals, errors='coerce').dropna()
+                x_num = self._to_mpl_numeric(x_vals, x_type).dropna()
                 if x_num.empty:
                     ax.text(0.5, 0.5, "No data", ha='center', va='center',
                             transform=ax.transAxes, color="#94A3B8", fontsize=8)
@@ -154,6 +157,9 @@ class FacetedHistogram(BaseChart):
                     else:
                         ax.hist(x_num, bins=n_bins, color=hist_color, alpha=0.85,
                                 edgecolor="white", linewidth=0.5, zorder=2)
+                if is_date:
+                    # Set date locator/formatter; labels only visible on bottom panels
+                    self._apply_date_fmt(ax, 'x')
             else:
                 counts = x_vals.astype(str).value_counts()
                 counts = counts.reindex(all_cats, fill_value=0)
@@ -213,6 +219,9 @@ class FacetedHistogram(BaseChart):
         title   = self._opt("title") or f"Distribution of {auto_x_label} by {y_col}"
 
         fig.tight_layout(rect=[0.0, 0.04, 1.0, 0.93])
+        if is_date:
+            # Rotate date tick labels on bottom-row panels after layout is finalised
+            fig.autofmt_xdate(rotation=30, ha='right')
         self._apply_suptitle(fig, title)
         fig.supxlabel(x_label, fontsize=10, y=0.01, color=self._text_color())
         fig.patch.set_facecolor(self._chart_bg())
