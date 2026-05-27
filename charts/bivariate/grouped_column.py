@@ -13,7 +13,7 @@ from matplotlib.figure import Figure
 from charts.base import BaseChart
 from core.chart_config import VariableSelection, ChartSpec
 from core.transformer import VariableTransformer
-from ui.palette import MPL_DEFAULT_PALETTE, PALETTE_CHOICES
+from ui.palette import MPL_DEFAULT_PALETTE, PALETTE_CHOICES, GREY_500
 
 
 class GroupedColumn(BaseChart):
@@ -76,7 +76,7 @@ class GroupedColumn(BaseChart):
             for xi, v in zip(x_pos + offset, vals):
                 if v == 0:
                     ax.text(xi, 0, "0", ha='center', va='bottom', fontsize=7,
-                            color='#64748B', zorder=3)
+                            color=GREY_500, zorder=3)
 
         ax.set_xticks(x_pos)
         rotate = bool(self._opt("rotate_x")) or n_x > 12
