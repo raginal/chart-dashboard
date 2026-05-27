@@ -435,8 +435,8 @@ Register a `ListedColormap` from a list of hex colours, then add its name to `PA
 
 ```python
 # ui/palette.py
+import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-import matplotlib.cm as cm
 
 # 1. Define your colours
 _MY_PALETTE_COLORS = [
@@ -450,7 +450,7 @@ _MY_PALETTE_COLORS = [
 
 # 2. Build and register the colormap
 _my_cmap = mcolors.ListedColormap(_MY_PALETTE_COLORS, name="my_palette")
-cm.register_cmap(name="my_palette", cmap=_my_cmap)
+plt.colormaps.register(_my_cmap)
 
 # 3. Add to the picker list
 PALETTE_CHOICES = [
@@ -465,22 +465,22 @@ Register a `LinearSegmentedColormap` from two or more anchor colours:
 
 ```python
 # ui/palette.py
+import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-import matplotlib.cm as cm
 
 # 1. Define anchor colours (left → right = low → high)
 _my_seq_cmap = mcolors.LinearSegmentedColormap.from_list(
     "my_seq",
     ["#EFF6FF", "#2563EB"],   # light blue → primary blue
 )
-cm.register_cmap(name="my_seq", cmap=_my_seq_cmap)
+plt.colormaps.register(_my_seq_cmap)
 
 # Diverging example (low → neutral → high)
 _my_div_cmap = mcolors.LinearSegmentedColormap.from_list(
     "my_div",
     ["#DC2626", "#F8FAFC", "#2563EB"],   # red → white → blue
 )
-cm.register_cmap(name="my_div", cmap=_my_div_cmap)
+plt.colormaps.register(_my_div_cmap)
 
 # 2. Add to the picker list
 PALETTE_CHOICES = [

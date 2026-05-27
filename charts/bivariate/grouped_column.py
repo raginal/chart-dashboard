@@ -70,8 +70,13 @@ class GroupedColumn(BaseChart):
 
         for i, (y_cat, color) in enumerate(zip(y_cats, colors)):
             offset = (i - n_y / 2 + 0.5) * bar_width
-            ax.bar(x_pos + offset, counts[y_cat].values,
+            vals = counts[y_cat].values
+            ax.bar(x_pos + offset, vals,
                    width=bar_width * 0.9, color=color, label=str(y_cat), zorder=2)
+            for xi, v in zip(x_pos + offset, vals):
+                if v == 0:
+                    ax.text(xi, 0, "0", ha='center', va='bottom', fontsize=7,
+                            color='#64748B', zorder=3)
 
         ax.set_xticks(x_pos)
         rotate = bool(self._opt("rotate_x")) or n_x > 12

@@ -101,6 +101,7 @@ class MosaicPlot(BaseChart):
         ax    = fig.add_subplot(111)
         title = self._opt("title") or f"{y_col} by {x_col}"
 
+        x_rot = 45.0 if (len(cats_x) > 6 or max((len(s) for s in cats_x), default=0) > 8) else 0.0
         try:
             mosaic(
                 sub,
@@ -114,7 +115,7 @@ class MosaicPlot(BaseChart):
                 },
                 labelizer=labelizer,
                 axes_label=True,
-                label_rotation=[45.0, 0.0],
+                label_rotation=[x_rot, 0.0],
             )
         except Exception as exc:
             fig.clear()

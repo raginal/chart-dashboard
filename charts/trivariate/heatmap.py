@@ -92,6 +92,8 @@ class Heatmap(BaseChart):
         ax.set_ylabel(y_label)
         self._apply_title(ax, self._opt("title") or "Heatmap")
         self._apply_figure_style(fig, ax, grid=False)
-        ax.tick_params(axis='x', rotation=45, labelsize=8)
-        ax.tick_params(axis='y', rotation=0,  labelsize=8)
+        x_labels = [str(c) for c in pivot.columns]
+        rotate_x = len(x_labels) > 6 or max((len(s) for s in x_labels), default=0) > 8
+        ax.tick_params(axis='x', rotation=45 if rotate_x else 0, labelsize=8)
+        ax.tick_params(axis='y', rotation=0, labelsize=8)
         fig.tight_layout()
