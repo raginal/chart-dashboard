@@ -90,6 +90,8 @@ class MosaicPlot(BaseChart):
                 n = int(count_series.get(k, 0))
             except Exception:
                 return ""
+            if n == 0:
+                return ""
             parts: list[str] = []
             if show_counts:
                 parts.append(f"{n:,}")
